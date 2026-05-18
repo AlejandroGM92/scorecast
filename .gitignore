@@ -10,3 +10,5 @@ Thumbs.db
 *.tsbuildinfo
 coverage/
 .nyc_output/
+google oauth/
+*.json.apps.googleusercontent.com.json
