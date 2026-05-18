@@ -1,4 +1,4 @@
-type MatchStatus = 'SCHEDULED' | 'LOCKED' | 'LIVE' | 'HALFTIME' | 'FINISHED' | 'CANCELLED';
+type MatchStatus = 'SCHEDULED' | 'LOCKED' | 'LIVE' | 'HALFTIME' | 'FINISHED' | 'CANCELLED' | 'POSTPONED';
 import { prisma } from '../config/database';
 import apiFootballService from './apiFootball.service';
 import pointsService from './points.service';
