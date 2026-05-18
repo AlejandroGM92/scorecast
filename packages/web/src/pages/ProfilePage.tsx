@@ -64,14 +64,15 @@ function ChangePasswordSection() {
 }
 
 // ─── Edit Profile (email / username) ─────────────────────────────────────────
-function EditProfileSection({ currentEmail, currentUsername }: { currentEmail: string; currentUsername: string }) {
+function EditProfileSection({ currentEmail, currentUsername, currentWhatsapp }: { currentEmail: string; currentUsername: string; currentWhatsapp?: string }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState(currentEmail);
   const [username, setUsername] = useState(currentUsername);
+  const [whatsapp, setWhatsapp] = useState(currentWhatsapp || '');
   const { setAuth, token, user } = useAuthStore();
 
   const { mutate, isPending } = useMutation({
-    mutationFn: () => authApi.updateProfile({ email, username }),
+    mutationFn: () => authApi.updateProfile({ email, username, whatsappNumber: whatsapp || null }),
     onSuccess: ({ data }) => {
       toast.success('Perfil actualizado');
       // Update local store
@@ -105,6 +106,23 @@ function EditProfileSection({ currentEmail, currentUsername }: { currentEmail: s
               type="email" value={email} onChange={(e) => setEmail(e.target.value)}
               className="input-field w-full" placeholder="Email"
             />
+          </div>
+          <div>
+            <label className="block text-xs text-text-muted mb-1">
+              WhatsApp <span className="text-text-muted/50">(con código de país, ej: 573001234567)</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">📱</span>
+              <input
+                type="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, ''))}
+                className="input-field flex-1" placeholder="573001234567"
+                maxLength={15}
+              />
+              {whatsapp && (
+                <button onClick={() => setWhatsapp('')} className="text-text-muted hover:text-danger text-xs px-2">✕</button>
+              )}
+            </div>
+            <p className="text-[10px] text-text-muted mt-1">Recibirás recordatorios de partidos por WhatsApp</p>
           </div>
           <button onClick={() => mutate()} disabled={isPending} className="btn-primary w-full">
             {isPending ? 'Guardando...' : 'Guardar cambios'}
@@ -453,6 +471,7 @@ export default function ProfilePage() {
           <EditProfileSection
             currentEmail={user?.email || ''}
             currentUsername={user?.username || ''}
+            currentWhatsapp={(profile as any)?.whatsappNumber || ''}
           />
           <ChangePasswordSection />
           {isAdmin && <TwoFactorSection enabled={!!profile?.twoFactorEnabled} />}

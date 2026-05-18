@@ -1,7 +1,26 @@
 import cron from 'node-cron';
+import axios from 'axios';
 import { prisma } from '../config/database';
 import { sendMatchReminderEmail } from '../services/email.service';
 import { logger } from '../utils/logger';
+
+async function sendWhatsappWebhook(payload: {
+  phone: string;
+  username: string;
+  homeTeam: string;
+  awayTeam: string;
+  matchTime: Date;
+  hasPrediction: boolean;
+  appUrl: string;
+}) {
+  const webhookUrl = process.env.N8N_WEBHOOK_URL;
+  if (!webhookUrl) return;
+  try {
+    await axios.post(webhookUrl, payload, { timeout: 5000 });
+  } catch (err: any) {
+    logger.warn(`⚠️ n8n webhook failed for ${payload.phone}: ${err.message}`);
+  }
+}
 
 export function startEmailNotificationsJob() {
   // Run every 30 minutes — detects matches starting between 55 and 75 minutes from now
@@ -50,6 +69,7 @@ export function startEmailNotificationsJob() {
           id: true,
           email: true,
           username: true,
+          whatsappNumber: true,
           predictions: {
             where: { matchId: { in: matchesToNotify.map((m) => m.id) } },
             select: { matchId: true },
@@ -85,6 +105,19 @@ export function startEmailNotificationsJob() {
               hasPrediction,
             });
             if (sent) emailsSent++;
+          }
+
+          // WhatsApp via n8n webhook (independent of email toggle)
+          if (user.whatsappNumber) {
+            await sendWhatsappWebhook({
+              phone: user.whatsappNumber,
+              username: user.username,
+              homeTeam: match.teamHome.name,
+              awayTeam: match.teamAway.name,
+              matchTime: match.dateTime,
+              hasPrediction,
+              appUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+            });
           }
         }
 

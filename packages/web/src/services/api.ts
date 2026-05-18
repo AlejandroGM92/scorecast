@@ -35,7 +35,7 @@ export const authApi = {
   login: (email: string, password: string, totpCode?: string) =>
     api.post('/auth/login', { email, password, ...(totpCode ? { totpCode } : {}) }),
   me: () => api.get('/auth/me'),
-  updateProfile: (data: { email?: string; username?: string }) => api.put('/auth/update-profile', data),
+  updateProfile: (data: { email?: string; username?: string; whatsappNumber?: string | null }) => api.put('/auth/update-profile', data),
   changePassword: (currentPassword: string, newPassword: string) =>
     api.put('/auth/change-password', { currentPassword, newPassword }),
   updateChampion: (teamCode: string) => api.put('/auth/champion', { teamCode }),

@@ -110,6 +110,7 @@ router.get('/me', auth, async (req: AuthRequest, res, next) => {
         championOdds: true,
         twoFactorEnabled: true,
         oauthProvider: true,
+        whatsappNumber: true,
         createdAt: true,
       },
     });
@@ -125,6 +126,7 @@ router.put('/update-profile', auth, async (req: AuthRequest, res, next) => {
     const schema = z.object({
       username: z.string().min(3).max(30).optional(),
       email: z.string().email().optional(),
+      whatsappNumber: z.string().max(20).optional().nullable(),
     });
     const data = schema.parse(req.body);
 
