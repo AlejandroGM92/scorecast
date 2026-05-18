@@ -277,7 +277,7 @@ function ChampionSection() {
             <p className="text-xs text-text-muted uppercase tracking-wide mb-0.5">Tu campeón elegido</p>
             <p className="text-xl font-black">{pickedTeam?.name ?? user?.championPrediction}</p>
             <p className="text-xs text-primary-400 font-semibold mt-0.5">
-              Cuota: x{user?.championOdds} pts si ganan el Mundial
+              Bonus si ganan: +{Math.round(user?.championOdds ?? 0)} pts
             </p>
           </div>
           <div className="text-4xl">🏆</div>
@@ -307,7 +307,7 @@ function ChampionSection() {
                   >
                     <img src={team.flag} alt={team.name} className="w-8 h-8 object-cover rounded shrink-0" />
                     <span className="text-sm font-medium truncate flex-1">{team.name}</span>
-                    <span className="text-xs text-primary-400 font-bold shrink-0">x{team.championOdds}</span>
+                    <span className="text-xs text-primary-400 font-bold shrink-0">+{Math.round(team.championOdds)}</span>
                   </button>
                 ))}
               </div>
@@ -321,7 +321,7 @@ function ChampionSection() {
                   <div key={team.code} className="flex items-center gap-1.5 px-2 py-1.5">
                     <span className="text-[10px] text-text-muted w-4 shrink-0">#{i + 1}</span>
                     <img src={team.flag} alt={team.code} className="w-5 h-5 object-cover rounded shrink-0" />
-                    <span className="text-[10px] font-bold text-primary-400 ml-auto">x{team.championOdds}</span>
+                    <span className="text-[10px] font-bold text-primary-400 ml-auto">+{Math.round(team.championOdds)}</span>
                   </div>
                 ))}
               </div>

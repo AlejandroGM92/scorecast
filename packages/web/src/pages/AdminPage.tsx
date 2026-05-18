@@ -481,6 +481,15 @@ export default function AdminPage() {
     onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
   });
 
+  const syncOdds = useMutation({
+    mutationFn: () => adminApi.syncOdds(),
+    onSuccess: ({ data }: any) => {
+      toast.success(`Cuotas actualizadas: ${data.updated} equipos`);
+      qc.invalidateQueries({ queryKey: ['teams'] });
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
+  });
+
   const wcSync = useMutation({
     mutationFn: () => adminApi.wcSync(),
     onSuccess: ({ data }: any) => {
@@ -715,8 +724,8 @@ export default function AdminPage() {
             {wcSyncLive.isPending ? '...' : 'En vivo'}
           </button>
         </div>
-        <div className="glass-card px-4 py-3 flex items-center gap-2">
-          <span className="text-xs text-text-muted shrink-0">🗂️ Grupos:</span>
+        <div className="glass-card px-4 py-3 flex items-center gap-2 flex-wrap gap-y-2">
+          <span className="text-xs text-text-muted shrink-0">🗂️ Datos FIFA:</span>
           <button
             onClick={() => {
               if (!window.confirm('¿Actualizar los grupos de todos los equipos con el sorteo oficial FIFA 2026?')) return;
@@ -726,7 +735,18 @@ export default function AdminPage() {
             className="btn-secondary text-xs flex items-center gap-1.5 flex-1 justify-center py-2"
           >
             <RefreshCw size={12} className={syncGroups.isPending ? 'animate-spin' : ''} />
-            {syncGroups.isPending ? 'Actualizando...' : 'Sincronizar grupos FIFA 2026'}
+            {syncGroups.isPending ? 'Actualizando...' : 'Sincronizar grupos'}
+          </button>
+          <button
+            onClick={() => {
+              if (!window.confirm('¿Aplicar las cuotas de campeón a todos los equipos del Mundial 2026?')) return;
+              syncOdds.mutate();
+            }}
+            disabled={syncOdds.isPending}
+            className="btn-secondary text-xs flex items-center gap-1.5 flex-1 justify-center py-2"
+          >
+            <RefreshCw size={12} className={syncOdds.isPending ? 'animate-spin' : ''} />
+            {syncOdds.isPending ? 'Actualizando...' : 'Sincronizar cuotas'}
           </button>
         </div>
         {/* Bulk action bar */}

@@ -106,6 +106,7 @@ export const adminApi = {
   wcSync: () => api.post('/admin/wc-sync'),
   wcSyncLive: () => api.post('/admin/wc-sync-live'),
   syncGroups: () => api.post('/admin/sync-groups'),
+  syncOdds: () => api.post('/admin/sync-odds'),
   calculatePoints: (matchId: string) => api.post(`/admin/calculate-points/${matchId}`),
   setMatchScore: (id: string, data: Record<string, unknown>) => api.put(`/admin/match/${id}/score`, data),
   config: {

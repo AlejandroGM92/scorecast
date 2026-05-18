@@ -379,6 +379,40 @@ router.post('/email-toggle', adminAuth, async (_req, res, next) => {
   }
 });
 
+// POST /api/admin/sync-odds — apply correct champion odds to all 48 WC teams
+router.post('/sync-odds', adminAuth, async (_req, res, next) => {
+  try {
+    const ODDS: Record<string, number> = {
+      ESP: 5,   FRA: 6,   ENG: 7,   ARG: 9,   BRA: 9,
+      GER: 13,  POR: 13,  NED: 19,  NOR: 26,  BEL: 34,
+      COL: 41,  USA: 51,  MAR: 51,  JPN: 67,  SUI: 67,
+      CRO: 81,  MEX: 81,  URU: 81,
+      ECU: 101, SEN: 101, SWE: 101, TUR: 101, AUT: 101, CAN: 101,
+      PAR: 151, BIH: 151, SCO: 151,
+      CIV: 251, EGY: 251,
+      CZE: 301, ALG: 301, GHA: 301,
+      AUS: 401, KOR: 401,
+      IRN: 501, TUN: 501, COD: 501, KSA: 501,
+      QAT: 751,
+      RSA: 1001, IRQ: 1001, NZL: 1001,
+      PAN: 1501, CPV: 1501, CUW: 1501,
+      UZB: 2001, JOR: 2001,
+      HAI: 2501,
+    };
+
+    let updated = 0;
+    for (const [code, odds] of Object.entries(ODDS)) {
+      const result = await prisma.team.updateMany({ where: { code }, data: { championOdds: odds } });
+      updated += result.count;
+    }
+
+    logger.info(`✅ Odds sincronizadas: ${updated} equipos actualizados`);
+    res.json({ success: true, updated });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/admin/sync-groups — apply official FIFA 2026 group assignments
 router.post('/sync-groups', adminAuth, async (_req, res, next) => {
   try {
