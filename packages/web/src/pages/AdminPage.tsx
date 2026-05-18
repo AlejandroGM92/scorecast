@@ -508,6 +508,15 @@ export default function AdminPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'tokens'] }),
   });
 
+  const deleteToken = useMutation({
+    mutationFn: (id: string) => adminApi.tokens.delete(id),
+    onSuccess: () => {
+      toast.success('Token eliminado');
+      qc.invalidateQueries({ queryKey: ['admin', 'tokens'] });
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error al eliminar'),
+  });
+
   const deleteUser = useMutation({
     mutationFn: (id: string) => adminApi.users.delete(id),
     onSuccess: () => {
@@ -847,6 +856,15 @@ export default function AdminPage() {
                             )}
                           >
                             {token.isActive ? 'Activo' : 'Inactivo'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`¿Eliminar el token "${token.code}"?`)) deleteToken.mutate(token.id);
+                            }}
+                            className="text-text-muted hover:text-danger transition-colors"
+                            title="Eliminar token"
+                          >
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </div>

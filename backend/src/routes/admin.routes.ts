@@ -64,6 +64,16 @@ router.post('/tokens', adminAuth, async (req: AuthRequest, res, next) => {
   }
 });
 
+// DELETE /api/admin/tokens/:id - delete token
+router.delete('/tokens/:id', adminAuth, async (req, res, next) => {
+  try {
+    await prisma.invitationToken.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // PUT /api/admin/tokens/:id - update token
 router.put('/tokens/:id', adminAuth, async (_req, res, next) => {
   try {

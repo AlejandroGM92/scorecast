@@ -82,6 +82,7 @@ export const adminApi = {
     list: () => api.get('/admin/tokens'),
     create: (data: Record<string, unknown>) => api.post('/admin/tokens', data),
     update: (id: string, data: Record<string, unknown>) => api.put(`/admin/tokens/${id}`, data),
+    delete: (id: string) => api.delete(`/admin/tokens/${id}`),
   },
   users: {
     list: () => api.get('/admin/users'),
