@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#1e3a5f"/>
+      <stop offset="100%" stop-color="#0d0d1a"/>
+    </radialGradient>
+    <radialGradient id="ball" cx="38%" cy="32%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#c8d8ec"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="31" fill="url(#bg)"/>
+
+  <!-- Subtle border -->
+  <circle cx="32" cy="32" r="30.5" fill="none" stroke="#2a4a7f" stroke-width="1"/>
+
+  <!-- Soccer ball -->
+  <g filter="url(#glow)">
+    <!-- Ball base -->
+    <circle cx="32" cy="32" r="17" fill="url(#ball)"/>
+
+    <!-- Pentagon patches (classic soccer ball) -->
+    <!-- Center pentagon -->
+    <polygon points="32,20 37.9,24.3 35.7,31.1 28.3,31.1 26.1,24.3"
+             fill="#1a1a2e" opacity="0.85"/>
+
+    <!-- Top right -->
+    <polygon points="37.9,24.3 45,22 47,29 41,33 35.7,31.1"
+             fill="#1a1a2e" opacity="0.85"/>
+
+    <!-- Bottom right -->
+    <polygon points="35.7,31.1 41,33 39,40.5 32,42 28.3,37"
+             fill="#1a1a2e" opacity="0.85"/>
+
+    <!-- Bottom left -->
+    <polygon points="28.3,31.1 28.3,37 21,39 17,33 23,29"
+             fill="#1a1a2e" opacity="0.85"/>
+
+    <!-- Top left -->
+    <polygon points="26.1,24.3 23,29 17,27 19,20 26.1,21"
+             fill="#1a1a2e" opacity="0.85"/>
+
+    <!-- Top -->
+    <polygon points="32,20 26.1,21 25,14.5 32,13 39,14.5 37.9,21"
+             fill="#1a1a2e" opacity="0.85"/>
+
+    <!-- Ball circle border -->
+    <circle cx="32" cy="32" r="17" fill="none" stroke="#94b4d4" stroke-width="0.5"/>
+
+    <!-- Shine highlight -->
+    <ellipse cx="27" cy="25" rx="4" ry="2.5" fill="white" opacity="0.35" transform="rotate(-30,27,25)"/>
+  </g>
+
+  <!-- Accent ring (brand color) -->
+  <circle cx="32" cy="32" r="31" fill="none" stroke="#4a80c4" stroke-width="0.8" opacity="0.6"/>
+</svg>
