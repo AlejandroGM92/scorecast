@@ -63,7 +63,7 @@ export default function TokenPage() {
       </div>
 
       <a
-        href={`/api/auth/google?token=${code}`}
+        href={`${import.meta.env.VITE_API_URL || ''}/api/auth/google?token=${code}`}
         className="flex items-center justify-center gap-3 w-full py-3 px-4 bg-white text-gray-800 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
       >
         <GoogleIcon />
