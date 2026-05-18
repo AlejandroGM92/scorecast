@@ -1,4 +1,4 @@
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Bell, LogOut, Shield, Home, Trophy, BookOpen, User } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -15,7 +15,14 @@ const NAV_LINKS = [
 
 export default function Navbar() {
   const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
   const qc = useQueryClient();
+
+  const handleLogout = () => {
+    const isAdmin = user?.role === 'ADMIN';
+    logout();
+    navigate(isAdmin ? '/sc-admin' : '/login');
+  };
   const [showNotifs, setShowNotifs] = useState(false);
 
   const { data: notifications } = useQuery({
@@ -109,7 +116,7 @@ export default function Navbar() {
 
           <span className="text-text-muted text-sm hidden md:block px-1">{user?.username}</span>
 
-          <button onClick={logout} className="text-text-muted hover:text-danger transition-colors p-2" title="Cerrar sesión">
+          <button onClick={handleLogout} className="text-text-muted hover:text-danger transition-colors p-2" title="Cerrar sesión">
             <LogOut size={18} />
           </button>
         </div>
