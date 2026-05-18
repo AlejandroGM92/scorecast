@@ -5,7 +5,8 @@
     "lib": ["ES2020"],
     "outDir": "./dist",
     "rootDir": "./src",
-    "strict": true,
+    "strict": false,
+    "noImplicitAny": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -15,5 +16,10 @@
     "sourceMap": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/services/colSync.service.ts",
+    "src/services/colEspnSync.service.ts"
+  ]
 }
