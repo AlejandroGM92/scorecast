@@ -47,9 +47,12 @@ export default function Navbar() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-background-base/80 backdrop-blur-md border-b border-white/5">
       <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="font-black text-xl tracking-tight shrink-0">
-          <span className="text-white">SCORE</span>
-          <span className="text-primary-400">CAST</span>
+        <Link to="/" className="flex items-center gap-2 font-black text-xl tracking-tight shrink-0">
+          <img src="/favicon.svg" alt="SCORECAST" className="w-8 h-8" />
+          <span>
+            <span className="text-white">SCORE</span>
+            <span className="text-primary-400">CAST</span>
+          </span>
         </Link>
 
         {/* Desktop nav links */}
