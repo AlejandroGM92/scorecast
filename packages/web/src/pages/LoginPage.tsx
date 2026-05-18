@@ -70,67 +70,6 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* Admin login (collapsible) */}
-      <div className="glass-card overflow-hidden">
-        <button
-          onClick={() => setShowAdmin(!showAdmin)}
-          className="w-full px-4 py-3 text-sm text-text-muted hover:text-white flex items-center justify-between transition-colors"
-        >
-          <span>Acceso administrador</span>
-          <span className="text-xs">{showAdmin ? '▲' : '▼'}</span>
-        </button>
-
-        {showAdmin && (
-          <form
-            onSubmit={handleSubmit}
-            className="px-4 pb-4 space-y-3 border-t border-white/5 pt-3"
-          >
-            {!requires2FA ? (
-              <>
-                <input
-                  type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  className="input-field w-full" placeholder="Email" required
-                />
-                <input
-                  type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                  className="input-field w-full" placeholder="Contraseña" required
-                />
-              </>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-center text-text-muted">
-                  🔐 Ingresa el código de <strong className="text-white">Google Authenticator</strong>
-                </p>
-                <input
-                  type="text" inputMode="numeric" maxLength={6}
-                  value={totpCode} onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
-                  className="input-field w-full text-center text-2xl tracking-widest font-mono"
-                  placeholder="000000" autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={() => { setRequires2FA(false); setTotpCode(''); }}
-                  className="text-xs text-text-muted hover:text-white w-full text-center transition-colors"
-                >
-                  ← Volver
-                </button>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loginMutation.isPending || (requires2FA && totpCode.length !== 6)}
-              className="btn-primary w-full"
-            >
-              {loginMutation.isPending
-                ? 'Verificando...'
-                : requires2FA
-                ? 'Confirmar código'
-                : 'Ingresar como admin'}
-            </button>
-          </form>
-        )}
-      </div>
     </div>
   );
 }

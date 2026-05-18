@@ -7,6 +7,7 @@ import AuthLayout from '@/components/layout/AuthLayout';
 
 // Pages
 import LoginPage from '@/pages/LoginPage';
+import AdminLoginPage from '@/pages/AdminLoginPage';
 import AuthCallbackPage from '@/pages/AuthCallbackPage';
 import AuthErrorPage from '@/pages/AuthErrorPage';
 import TokenPage from '@/pages/TokenPage';
@@ -75,6 +76,7 @@ export default function App() {
           <Route path="/invite/:code" element={<TokenPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/auth/error" element={<AuthErrorPage />} />
+          <Route path="/sc-admin" element={<AdminLoginPage />} />
         </Route>
 
         {/* Protected app routes */}
