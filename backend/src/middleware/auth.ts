@@ -8,10 +8,11 @@ export interface AuthRequest extends Request {
     username: string;
     email: string;
     role: string;
+    sessionVersion?: number;
   };
 }
 
-export function auth(req: AuthRequest, res: Response, next: NextFunction) {
+export async function auth(req: AuthRequest, res: Response, next: NextFunction) {
   const token = req.headers.authorization?.replace('Bearer ', '');
 
   if (!token) {
@@ -19,8 +20,25 @@ export function auth(req: AuthRequest, res: Response, next: NextFunction) {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as AuthRequest['user'];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as AuthRequest['user'] & { sessionVersion?: number };
     req.user = decoded;
+
+    // Verify session is still active (single session enforcement)
+    if (decoded?.sessionVersion !== undefined) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { sessionVersion: true, isActive: true },
+      });
+
+      if (!dbUser || !dbUser.isActive) {
+        return res.status(401).json({ error: 'Sesión inválida' });
+      }
+
+      if (dbUser.sessionVersion !== decoded.sessionVersion) {
+        return res.status(401).json({ error: 'Sesión cerrada desde otro dispositivo' });
+      }
+    }
+
     next();
   } catch {
     return res.status(401).json({ error: 'Token inválido o expirado' });

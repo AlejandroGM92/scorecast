@@ -4,9 +4,9 @@ import { prisma } from '../config/database';
 import { logger } from '../utils/logger';
 
 class AuthService {
-  generateJWT(user: { id: string; username: string; email: string; role: string }) {
+  generateJWT(user: { id: string; username: string; email: string; role: string; sessionVersion?: number }) {
     return jwt.sign(
-      { id: user.id, username: user.username, email: user.email, role: user.role },
+      { id: user.id, username: user.username, email: user.email, role: user.role, sessionVersion: user.sessionVersion ?? 1 },
       process.env.JWT_SECRET!,
       { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
     );
@@ -42,6 +42,7 @@ class AuthService {
         totalPoints: true, exactScores: true, correctResults: true,
         correctGoals: true, championPrediction: true, championOdds: true,
         oauthProvider: true, lastLoginAt: true, createdAt: true,
+        sessionVersion: true,
       },
     });
 
@@ -56,12 +57,13 @@ class AuthService {
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) throw new Error('Credenciales inválidas');
 
-    await prisma.user.update({
+    const updated = await prisma.user.update({
       where: { id: user.id },
-      data: { lastLoginAt: new Date() },
+      data: { lastLoginAt: new Date(), sessionVersion: { increment: 1 } },
+      select: { sessionVersion: true },
     });
 
-    const token = this.generateJWT(user);
+    const token = this.generateJWT({ ...user, sessionVersion: updated.sessionVersion });
     logger.info(`✅ User logged in: ${user.username}`);
 
     return { token, user: this.sanitizeUser(user) };

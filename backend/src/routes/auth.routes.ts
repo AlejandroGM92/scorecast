@@ -74,9 +74,14 @@ router.get('/google/login', authLimiter, (req, res, next) => {
 router.get(
   '/google/callback',
   passport.authenticate('google', { session: false, failureRedirect: '/auth/failed' }),
-  (req: any, res) => {
+  async (req: any, res) => {
     const user = req.user;
-    const jwtToken = authService.generateJWT(user);
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: { sessionVersion: { increment: 1 } },
+      select: { sessionVersion: true },
+    });
+    const jwtToken = authService.generateJWT({ ...user, sessionVersion: updated.sessionVersion });
     const sanitized = authService.sanitizeUser(user);
     const params = new URLSearchParams({ token: jwtToken, user: JSON.stringify(sanitized) });
     res.redirect(`${process.env.FRONTEND_URL}/auth/callback?${params}`);
