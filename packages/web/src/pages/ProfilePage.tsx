@@ -294,7 +294,7 @@ function ChampionSection() {
             {/* Left: team grid */}
             <div className="p-3 max-h-72 overflow-y-auto">
               <div className="grid grid-cols-1 gap-1.5">
-                {teams?.filter((team: any) => team.group).map((team: any) => (
+                {sorted.map((team: any) => (
                   <button
                     key={team.code}
                     onClick={() => { setSelected(team.code === selected ? null : team.code); setConfirming(false); }}
