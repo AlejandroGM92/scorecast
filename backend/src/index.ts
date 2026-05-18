@@ -59,16 +59,16 @@ configurePassport();
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Rate limiting
-app.use(generalLimiter);
-
-// Health check
+// Health check — before rate limiter so Render never gets 429
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Rate limiting
+app.use(generalLimiter);
 
 // Routes
 app.use('/api/auth', authRoutes);
