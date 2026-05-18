@@ -265,6 +265,42 @@ export default function RulesPage() {
         </div>
       </section>
 
+      {/* ── Payment warning ── */}
+      <section className="glass-card overflow-hidden border border-yellow-500/30">
+        <div className="px-5 py-4 border-b border-yellow-500/20 flex items-center gap-2">
+          <span className="text-yellow-400 text-lg">⚠️</span>
+          <h2 className="font-bold text-lg text-yellow-400">Aviso de participación</h2>
+        </div>
+        <div className="px-5 py-4 space-y-3 text-sm text-text-muted">
+          <p>
+            Para participar en SCORECAST es necesario haber realizado el pago de inscripción
+            <strong className="text-white"> antes del inicio del Mundial</strong>.
+          </p>
+          <div className="space-y-2">
+            <div className="flex items-start gap-3 bg-yellow-500/5 rounded-lg px-3 py-2.5">
+              <span className="text-yellow-400 text-base shrink-0 mt-0.5">🔒</span>
+              <p>
+                Si al inicio del torneo el pago <strong className="text-yellow-300">no ha sido confirmado</strong>,
+                la cuenta será <strong className="text-white">deshabilitada</strong> y no podrás acumular puntos
+                mientras la situación no se regularice.
+              </p>
+            </div>
+            <div className="flex items-start gap-3 bg-red-500/5 rounded-lg px-3 py-2.5">
+              <span className="text-red-400 text-base shrink-0 mt-0.5">🗑️</span>
+              <p>
+                Si transcurre <strong className="text-white">un día desde el inicio del Mundial</strong> sin
+                que se reciba el pago, la cuenta será
+                <strong className="text-red-400"> eliminada definitivamente </strong>
+                y no podrás recuperar tu historial ni participar en el torneo.
+              </p>
+            </div>
+          </div>
+          <p className="text-xs text-text-muted/70 border-t border-white/5 pt-3">
+            Ante cualquier duda sobre tu pago, comunícate con los organizadores antes del inicio del torneo.
+          </p>
+        </div>
+      </section>
+
       {/* ── Champion prediction ── */}
       <section className="space-y-3">
         <div>
