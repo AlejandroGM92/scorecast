@@ -105,6 +105,7 @@ export const adminApi = {
   resetAllScores: () => api.post('/admin/reset-all-scores'),
   wcSync: () => api.post('/admin/wc-sync'),
   wcSyncLive: () => api.post('/admin/wc-sync-live'),
+  syncGroups: () => api.post('/admin/sync-groups'),
   calculatePoints: (matchId: string) => api.post(`/admin/calculate-points/${matchId}`),
   setMatchScore: (id: string, data: Record<string, unknown>) => api.put(`/admin/match/${id}/score`, data),
   config: {

@@ -472,6 +472,15 @@ export default function AdminPage() {
     enabled: tab === 'api',
   });
 
+  const syncGroups = useMutation({
+    mutationFn: () => adminApi.syncGroups(),
+    onSuccess: ({ data }: any) => {
+      toast.success(`Grupos actualizados: ${data.updated} equipos`);
+      qc.invalidateQueries({ queryKey: ['teams'] });
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
+  });
+
   const wcSync = useMutation({
     mutationFn: () => adminApi.wcSync(),
     onSuccess: ({ data }: any) => {
@@ -704,6 +713,20 @@ export default function AdminPage() {
           >
             <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
             {wcSyncLive.isPending ? '...' : 'En vivo'}
+          </button>
+        </div>
+        <div className="glass-card px-4 py-3 flex items-center gap-2">
+          <span className="text-xs text-text-muted shrink-0">🗂️ Grupos:</span>
+          <button
+            onClick={() => {
+              if (!window.confirm('¿Actualizar los grupos de todos los equipos con el sorteo oficial FIFA 2026?')) return;
+              syncGroups.mutate();
+            }}
+            disabled={syncGroups.isPending}
+            className="btn-secondary text-xs flex items-center gap-1.5 flex-1 justify-center py-2"
+          >
+            <RefreshCw size={12} className={syncGroups.isPending ? 'animate-spin' : ''} />
+            {syncGroups.isPending ? 'Actualizando...' : 'Sincronizar grupos FIFA 2026'}
           </button>
         </div>
         {/* Bulk action bar */}

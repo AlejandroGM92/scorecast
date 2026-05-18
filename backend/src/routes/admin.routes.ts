@@ -379,6 +379,55 @@ router.post('/email-toggle', adminAuth, async (_req, res, next) => {
   }
 });
 
+// POST /api/admin/sync-groups — apply official FIFA 2026 group assignments
+router.post('/sync-groups', adminAuth, async (_req, res, next) => {
+  try {
+    const GROUP_ASSIGNMENTS: Record<string, string> = {
+      // Group A
+      MEX: 'A', RSA: 'A', KOR: 'A', CZE: 'A',
+      // Group B
+      CAN: 'B', SUI: 'B', QAT: 'B', BIH: 'B',
+      // Group C
+      BRA: 'C', MAR: 'C', HAI: 'C', SCO: 'C',
+      // Group D
+      USA: 'D', PAR: 'D', AUS: 'D', TUR: 'D',
+      // Group E
+      GER: 'E', CUW: 'E', CIV: 'E', ECU: 'E',
+      // Group F
+      NED: 'F', JPN: 'F', TUN: 'F', SWE: 'F',
+      // Group G
+      BEL: 'G', EGY: 'G', IRN: 'G', NZL: 'G',
+      // Group H
+      ESP: 'H', CPV: 'H', KSA: 'H', URU: 'H',
+      // Group I
+      FRA: 'I', SEN: 'I', NOR: 'I', IRQ: 'I',
+      // Group J
+      ARG: 'J', ALG: 'J', AUT: 'J', JOR: 'J',
+      // Group K
+      POR: 'K', UZB: 'K', COL: 'K', COD: 'K',
+      // Group L
+      ENG: 'L', CRO: 'L', GHA: 'L', PAN: 'L',
+    };
+
+    let updated = 0;
+    for (const [code, group] of Object.entries(GROUP_ASSIGNMENTS)) {
+      const result = await prisma.team.updateMany({ where: { code }, data: { group } });
+      updated += result.count;
+    }
+
+    // Clear groups for teams not in any WC group (e.g. liga teams)
+    await prisma.team.updateMany({
+      where: { code: { notIn: Object.keys(GROUP_ASSIGNMENTS) } },
+      data: { group: null },
+    });
+
+    logger.info(`✅ Grupos sincronizados: ${updated} equipos actualizados`);
+    res.json({ success: true, updated });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/admin/wc-sync — full sync Mundial 2026 scores from ESPN
 router.post('/wc-sync', adminAuth, async (_req, res, next) => {
   try {
