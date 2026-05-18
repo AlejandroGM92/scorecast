@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s /b \"c:\\\\Users\\\\Alejo PC\\\\OneDrive\\\\ALEJANDRO\\\\TRABAJO\\\\PROYECTOS\\\\SCORECAST\")",
+      "Bash(npm --version)",
+      "Bash(docker --version)",
+      "PowerShell(docker --version 2>&1)",
+      "PowerShell(node --version)",
+      "PowerShell(npm --version)",
+      "PowerShell(Get-Command psql -ErrorAction SilentlyContinue)",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); const bcrypt = require\\('bcryptjs'\\); bcrypt.hash\\('Admin2026!', 10\\).then\\(h => console.log\\(h\\)\\);\")",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

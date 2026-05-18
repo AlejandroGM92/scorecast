@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USERS & AUTHENTICATION
+// ============================================
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique @db.VarChar(30)
+  email        String   @unique @db.VarChar(100)
+  passwordHash String   @default("")
+  role         UserRole @default(PLAYER)
+  isActive     Boolean  @default(true)
+
+  // OAuth
+  googleId      String? @unique
+  microsoftId   String? @unique
+  oauthProvider String?
+
+  // Invitation token
+  invitationTokenId String?
+  invitationToken   InvitationToken? @relation("TokenUser", fields: [invitationTokenId], references: [id])
+
+  // Champion prediction
+  championPrediction  String?
+  championPredictedAt DateTime?
+  championOdds        Float?
+
+  // Cached stats
+  totalPoints    Int @default(0)
+  exactScores    Int @default(0)
+  correctResults Int @default(0)
+  correctGoals   Int @default(0)
+
+  // Relations
+  predictions   Prediction[]
+  createdTokens InvitationToken[] @relation("TokenCreator")
+  notifications Notification[]
+
+  // Two-Factor Authentication (TOTP)
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean @default(false)
+
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([totalPoints(sort: Desc)])
+  @@index([username])
+}
+
+enum UserRole {
+  ADMIN
+  PLAYER
+}
+
+// ============================================
+// INVITATION TOKENS
+// ============================================
+
+model InvitationToken {
+  id   String @id @default(cuid())
+  code String @unique @db.VarChar(12)
+
+  maxUses     Int       @default(1)
+  currentUses Int       @default(0)
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+
+  createdById String
+  createdBy   User      @relation("TokenCreator", fields: [createdById], references: [id])
+  usedBy      User[]    @relation("TokenUser")
+
+  description String?  @db.VarChar(100)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+}
+
+// ============================================
+// TEAMS
+// ============================================
+
+model Team {
+  id            String @id @default(cuid())
+  apiFootballId Int    @unique
+
+  name   String @db.VarChar(100)
+  nameEn String @db.VarChar(100)
+  code   String @unique @db.VarChar(3)
+  flag   String
+  group  String? @db.VarChar(1)
+
+  championOdds Float
+
+  played       Int @default(0)
+  won          Int @default(0)
+  drawn        Int @default(0)
+  lost         Int @default(0)
+  goalsFor     Int @default(0)
+  goalsAgainst Int @default(0)
+  goalDifference Int @default(0)
+  points       Int @default(0)
+
+  homeMatches Match[] @relation("HomeTeam")
+  awayMatches Match[] @relation("AwayTeam")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([group])
+  @@index([points(sort: Desc)])
+}
+
+// ============================================
+// MATCHES
+// ============================================
+
+model Match {
+  id            String @id @default(cuid())
+  apiFootballId Int    @unique
+
+  phase       MatchPhase
+  matchNumber Int
+  round       String?    @db.VarChar(50)
+
+  teamHomeId String
+  teamAwayId String
+  teamHome   Team   @relation("HomeTeam", fields: [teamHomeId], references: [id])
+  teamAway   Team   @relation("AwayTeam", fields: [teamAwayId], references: [id])
+
+  dateTime DateTime
+  venue    String?  @db.VarChar(100)
+  city     String?  @db.VarChar(50)
+  timezone String   @default("America/Mexico_City")
+
+  scoreHome    Int?
+  scoreAway    Int?
+  scoreHomeET  Int?
+  scoreAwayET  Int?
+  scoreHomePen Int?
+  scoreAwayPen Int?
+
+  status      MatchStatus @default(SCHEDULED)
+  minute      Int?
+  competition Competition @default(WORLD_CUP)
+
+  lastSyncAt        DateTime?
+  syncErrorCount    Int       @default(0)
+  pointsCalculated  Boolean   @default(false)
+
+  predictions Prediction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dateTime])
+  @@index([status])
+  @@index([phase, matchNumber])
+  @@index([pointsCalculated])
+}
+
+enum MatchPhase {
+  GROUP_STAGE
+  ROUND_OF_32
+  ROUND_OF_16
+  QUARTER_FINALS
+  SEMI_FINALS
+  THIRD_PLACE
+  FINAL
+}
+
+enum Competition {
+  WORLD_CUP
+  COL_LIGA
+}
+
+enum MatchStatus {
+  SCHEDULED
+  LOCKED
+  LIVE
+  HALFTIME
+  FINISHED
+  POSTPONED
+  CANCELLED
+}
+
+// ============================================
+// PREDICTIONS
+// ============================================
+
+model Prediction {
+  id String @id @default(cuid())
+
+  userId  String
+  matchId String
+  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match   Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  predictedHome Int @db.SmallInt
+  predictedAway Int @db.SmallInt
+
+  pointsEarned  Int     @default(0)
+  pointsExact   Int     @default(0)
+  pointsResult  Int     @default(0)
+  pointsGoals   Int     @default(0)
+
+  isExactScore    Boolean @default(false)
+  isCorrectResult Boolean @default(false)
+  hasCorrectGoal  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, matchId])
+  @@index([userId])
+  @@index([matchId])
+  @@index([pointsEarned(sort: Desc)])
+}
+
+// ============================================
+// API USAGE TRACKING
+// ============================================
+
+model ApiUsageLog {
+  id String @id @default(cuid())
+
+  endpoint     String @db.VarChar(100)
+  method       String @db.VarChar(10) @default("GET")
+  statusCode   Int?
+  responseTime Int?
+
+  date         DateTime @default(now()) @db.Date
+  requestCount Int      @default(1)
+
+  errorMessage String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@unique([endpoint, date])
+  @@index([date])
+}
+
+// ============================================
+// SYSTEM CONFIGURATION
+// ============================================
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique @db.VarChar(50)
+  value       String   @db.Text
+  description String?  @db.Text
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+model Notification {
+  id       String           @id @default(cuid())
+  userId   String
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type     NotificationType
+  title    String           @db.VarChar(200)
+  message  String           @db.Text
+  isRead   Boolean          @default(false)
+  readAt   DateTime?
+  metadata Json?
+  createdAt DateTime        @default(now())
+
+  @@index([userId, isRead])
+  @@index([createdAt(sort: Desc)])
+}
+
+enum NotificationType {
+  MATCH_STARTING
+  MATCH_LOCKED
+  MATCH_FINISHED
+  POINTS_EARNED
+  LEADERBOARD_UP
+  PHASE_UNLOCKED
+}

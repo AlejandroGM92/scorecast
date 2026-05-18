@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #0d0d1a;
+    color: #e8eaf6;
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0d0d1a;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #364fc7;
+    border-radius: 3px;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-background-card border border-white/5 rounded-xl backdrop-blur-sm;
+  }
+
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-500 text-white font-semibold px-4 py-2 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-white/10 hover:bg-white/20 text-text-primary font-semibold px-4 py-2 rounded-lg transition-colors duration-200;
+  }
+
+  .input-field {
+    @apply bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all;
+  }
+
+  .live-badge {
+    @apply bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold animate-pulse flex items-center gap-1;
+  }
+
+  .score-display {
+    @apply text-3xl font-bold tabular-nums;
+  }
+
+  .page-container {
+    @apply max-w-4xl mx-auto px-4 pb-24 md:pb-8 pt-4;
+  }
+}

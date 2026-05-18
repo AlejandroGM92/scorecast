@@ -1,0 +1,492 @@
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
+import { clsx } from 'clsx';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { useAuthStore } from '@/store/auth.store';
+import { leaderboardApi, authApi, teamsApi } from '@/services/api';
+
+// ─── Change Password ──────────────────────────────────────────────────────────
+function ChangePasswordSection() {
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: () => authApi.changePassword(current, next),
+    onSuccess: () => {
+      toast.success('Contraseña actualizada');
+      setOpen(false);
+      setCurrent(''); setNext(''); setConfirm('');
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error al cambiar contraseña'),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (next !== confirm) { toast.error('Las contraseñas no coinciden'); return; }
+    if (next.length < 6) { toast.error('Mínimo 6 caracteres'); return; }
+    mutate();
+  };
+
+  return (
+    <div className="glass-card overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full px-4 py-3 flex items-center justify-between text-sm hover:bg-white/5 transition-colors"
+      >
+        <span className="font-semibold">🔑 Cambiar contraseña</span>
+        <span className="text-text-muted text-xs">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <form onSubmit={handleSubmit} className="px-4 pb-4 pt-1 space-y-3 border-t border-white/5">
+          <input
+            type="password" value={current} onChange={(e) => setCurrent(e.target.value)}
+            className="input-field w-full" placeholder="Contraseña actual" required
+          />
+          <input
+            type="password" value={next} onChange={(e) => setNext(e.target.value)}
+            className="input-field w-full" placeholder="Nueva contraseña (mín. 6 caracteres)" required
+          />
+          <input
+            type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
+            className="input-field w-full" placeholder="Confirmar nueva contraseña" required
+          />
+          <button type="submit" disabled={isPending} className="btn-primary w-full">
+            {isPending ? 'Guardando...' : 'Cambiar contraseña'}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+// ─── Edit Profile (email / username) ─────────────────────────────────────────
+function EditProfileSection({ currentEmail, currentUsername }: { currentEmail: string; currentUsername: string }) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState(currentEmail);
+  const [username, setUsername] = useState(currentUsername);
+  const { setAuth, token, user } = useAuthStore();
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: () => authApi.updateProfile({ email, username }),
+    onSuccess: ({ data }) => {
+      toast.success('Perfil actualizado');
+      // Update local store
+      if (user && token) setAuth({ ...user, email: data.email, username: data.username }, token);
+      setOpen(false);
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error al actualizar'),
+  });
+
+  return (
+    <div className="glass-card overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full px-4 py-3 flex items-center justify-between text-sm hover:bg-white/5 transition-colors"
+      >
+        <span className="font-semibold">✏️ Editar perfil</span>
+        <span className="text-text-muted text-xs">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 pt-1 space-y-3 border-t border-white/5">
+          <div>
+            <label className="block text-xs text-text-muted mb-1">Nombre de usuario</label>
+            <input
+              type="text" value={username} onChange={(e) => setUsername(e.target.value)}
+              className="input-field w-full" placeholder="Username"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-text-muted mb-1">Email</label>
+            <input
+              type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              className="input-field w-full" placeholder="Email"
+            />
+          </div>
+          <button onClick={() => mutate()} disabled={isPending} className="btn-primary w-full">
+            {isPending ? 'Guardando...' : 'Guardar cambios'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── 2FA Section ──────────────────────────────────────────────────────────────
+function TwoFactorSection({ enabled }: { enabled: boolean }) {
+  const qc = useQueryClient();
+  const [step, setStep] = useState<'idle' | 'setup' | 'disable'>('idle');
+  const [code, setCode] = useState('');
+  const [qrData, setQrData] = useState<{ qrDataUrl: string; secret: string } | null>(null);
+
+  const setupMutation = useMutation({
+    mutationFn: () => authApi.setup2FA(),
+    onSuccess: ({ data }) => { setQrData(data); setStep('setup'); },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
+  });
+
+  const enableMutation = useMutation({
+    mutationFn: () => authApi.enable2FA(code),
+    onSuccess: () => {
+      toast.success('2FA activado correctamente');
+      qc.invalidateQueries({ queryKey: ['profile'] });
+      setStep('idle'); setCode(''); setQrData(null);
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Código incorrecto'),
+  });
+
+  const disableMutation = useMutation({
+    mutationFn: () => authApi.disable2FA(code),
+    onSuccess: () => {
+      toast.success('2FA desactivado');
+      qc.invalidateQueries({ queryKey: ['profile'] });
+      setStep('idle'); setCode('');
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Código incorrecto'),
+  });
+
+  return (
+    <div className="glass-card p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="font-semibold">🔐 Autenticación en dos pasos (2FA)</p>
+          <p className="text-xs text-text-muted mt-0.5">
+            {enabled ? 'Activo — tu cuenta está protegida con Google Authenticator' : 'Inactivo'}
+          </p>
+        </div>
+        <span className={clsx('text-xs font-bold px-2 py-1 rounded-full', enabled ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-text-muted')}>
+          {enabled ? 'ON' : 'OFF'}
+        </span>
+      </div>
+
+      {/* Idle state */}
+      {step === 'idle' && (
+        <button
+          onClick={() => enabled ? setStep('disable') : setupMutation.mutate()}
+          disabled={setupMutation.isPending}
+          className={clsx('w-full py-2 rounded-lg text-sm font-semibold transition-colors', enabled ? 'bg-danger/20 text-danger hover:bg-danger/30' : 'btn-secondary')}
+        >
+          {setupMutation.isPending ? 'Generando QR...' : enabled ? 'Desactivar 2FA' : 'Activar 2FA'}
+        </button>
+      )}
+
+      {/* Setup: show QR */}
+      {step === 'setup' && qrData && (
+        <div className="space-y-4">
+          <p className="text-sm text-text-muted">
+            1. Abre <strong className="text-white">Google Authenticator</strong> (o similar)<br />
+            2. Escanea el QR<br />
+            3. Ingresa el código de 6 dígitos para confirmar
+          </p>
+          <div className="flex justify-center">
+            <img src={qrData.qrDataUrl} alt="QR 2FA" className="w-48 h-48 rounded-lg bg-white p-2" />
+          </div>
+          <p className="text-xs text-center text-text-muted">
+            Clave manual: <span className="font-mono text-white">{qrData.secret}</span>
+          </p>
+          <input
+            type="text" inputMode="numeric" maxLength={6}
+            value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+            className="input-field w-full text-center text-2xl tracking-widest font-mono"
+            placeholder="000000"
+          />
+          <div className="flex gap-2">
+            <button onClick={() => { setStep('idle'); setCode(''); setQrData(null); }} className="btn-secondary flex-1 text-sm">
+              Cancelar
+            </button>
+            <button
+              onClick={() => enableMutation.mutate()}
+              disabled={code.length !== 6 || enableMutation.isPending}
+              className="btn-primary flex-1 text-sm"
+            >
+              {enableMutation.isPending ? 'Verificando...' : 'Activar'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Disable: enter code */}
+      {step === 'disable' && (
+        <div className="space-y-3">
+          <p className="text-sm text-text-muted">Ingresa el código de Google Authenticator para desactivar:</p>
+          <input
+            type="text" inputMode="numeric" maxLength={6}
+            value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+            className="input-field w-full text-center text-2xl tracking-widest font-mono"
+            placeholder="000000"
+          />
+          <div className="flex gap-2">
+            <button onClick={() => { setStep('idle'); setCode(''); }} className="btn-secondary flex-1 text-sm">
+              Cancelar
+            </button>
+            <button
+              onClick={() => disableMutation.mutate()}
+              disabled={code.length !== 6 || disableMutation.isPending}
+              className="bg-danger hover:bg-danger/80 text-white flex-1 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+            >
+              {disableMutation.isPending ? 'Desactivando...' : 'Desactivar'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Champion Selector ────────────────────────────────────────────────────────
+function ChampionSection() {
+  const { user, setAuth, token } = useAuthStore();
+  const qc = useQueryClient();
+  const [selected, setSelected] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  const { data: teams } = useQuery({
+    queryKey: ['teams'],
+    queryFn: () => teamsApi.list().then((r) => r.data),
+  });
+
+  const { mutate: saveChampion, isPending } = useMutation({
+    mutationFn: (code: string) => authApi.updateChampion(code),
+    onSuccess: ({ data }) => {
+      toast.success('¡Campeón guardado!');
+      qc.invalidateQueries({ queryKey: ['profile'] });
+      if (user && token) setAuth({ ...user, championPrediction: data.championPrediction, championOdds: data.championOdds }, token);
+      setSelected(null);
+      setConfirming(false);
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
+  });
+
+  const alreadyPicked = !!user?.championPrediction;
+  const pickedTeam = teams?.find((t: any) => t.code === user?.championPrediction);
+  const selectedTeam = teams?.find((t: any) => t.code === selected);
+  const sorted = teams ? [...teams].filter((t: any) => t.group).sort((a: any, b: any) => a.championOdds - b.championOdds) : [];
+
+  return (
+    <div className="space-y-3">
+      <h2 className="font-semibold text-sm text-text-muted uppercase tracking-wide">Predicción del Campeón</h2>
+
+      {alreadyPicked ? (
+        /* ── Already picked: stat box ── */
+        <div className="glass-card p-4 flex items-center gap-4">
+          <img src={pickedTeam?.flag} alt={pickedTeam?.name} className="w-14 h-14 object-cover rounded-xl border border-white/10" />
+          <div className="flex-1">
+            <p className="text-xs text-text-muted uppercase tracking-wide mb-0.5">Tu campeón elegido</p>
+            <p className="text-xl font-black">{pickedTeam?.name ?? user?.championPrediction}</p>
+            <p className="text-xs text-primary-400 font-semibold mt-0.5">
+              Cuota: x{user?.championOdds} pts si ganan el Mundial
+            </p>
+          </div>
+          <div className="text-4xl">🏆</div>
+        </div>
+      ) : (
+        /* ── Selector: two columns ── */
+        <div className="glass-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-white/5">
+            <p className="text-sm font-semibold">Elige tu campeón del Mundial 2026</p>
+            <p className="text-xs text-text-muted mt-0.5">Solo puedes elegir una vez — es irreversible</p>
+          </div>
+
+          <div className="grid grid-cols-[1fr_auto] divide-x divide-white/5">
+            {/* Left: team grid */}
+            <div className="p-3 max-h-72 overflow-y-auto">
+              <div className="grid grid-cols-1 gap-1.5">
+                {teams?.filter((team: any) => team.group).map((team: any) => (
+                  <button
+                    key={team.code}
+                    onClick={() => { setSelected(team.code === selected ? null : team.code); setConfirming(false); }}
+                    className={clsx(
+                      'flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all',
+                      selected === team.code
+                        ? 'bg-primary-500/20 ring-1 ring-primary-400'
+                        : 'hover:bg-white/5'
+                    )}
+                  >
+                    <img src={team.flag} alt={team.name} className="w-8 h-8 object-cover rounded shrink-0" />
+                    <span className="text-sm font-medium truncate flex-1">{team.name}</span>
+                    <span className="text-xs text-primary-400 font-bold shrink-0">x{team.championOdds}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: odds table */}
+            <div className="w-28 flex flex-col">
+              <div className="px-2 py-2 border-b border-white/5 text-[10px] text-text-muted font-semibold text-center uppercase">Cuotas</div>
+              <div className="overflow-y-auto max-h-72 divide-y divide-white/5">
+                {sorted.map((team: any, i: number) => (
+                  <div key={team.code} className="flex items-center gap-1.5 px-2 py-1.5">
+                    <span className="text-[10px] text-text-muted w-4 shrink-0">#{i + 1}</span>
+                    <img src={team.flag} alt={team.code} className="w-5 h-5 object-cover rounded shrink-0" />
+                    <span className="text-[10px] font-bold text-primary-400 ml-auto">x{team.championOdds}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Confirm banner */}
+          {selected && !confirming && (
+            <div className="px-4 py-3 border-t border-white/10 bg-primary-500/5 flex items-center gap-3">
+              <img src={selectedTeam?.flag} alt="" className="w-8 h-8 rounded object-cover" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">{selectedTeam?.name}</p>
+                <p className="text-xs text-text-muted">¿Confirmas? No podrás cambiar después.</p>
+              </div>
+              <button onClick={() => setConfirming(true)} className="btn-primary text-xs px-3 py-1.5 shrink-0">
+                Confirmar
+              </button>
+            </div>
+          )}
+          {selected && confirming && (
+            <div className="px-4 py-3 border-t border-white/10 bg-yellow-500/5 flex items-center gap-3">
+              <span className="text-xl">⚠️</span>
+              <p className="flex-1 text-xs text-yellow-300">Esta acción es <strong>irreversible</strong>. ¿Seguro?</p>
+              <button onClick={() => setConfirming(false)} className="btn-secondary text-xs px-3 py-1.5">Cancelar</button>
+              <button onClick={() => saveChampion(selected)} disabled={isPending} className="btn-primary text-xs px-3 py-1.5">
+                {isPending ? '...' : '¡Sí!'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main ProfilePage ─────────────────────────────────────────────────────────
+export default function ProfilePage() {
+  const { user, setAuth, token } = useAuthStore();
+
+  const { data: stats, dataUpdatedAt: statsUpdatedAt } = useQuery({
+    queryKey: ['leaderboard', 'me'],
+    queryFn: () => leaderboardApi.me().then((r) => r.data),
+    refetchInterval: 30_000,
+  });
+
+  const { data: profile } = useQuery({
+    queryKey: ['profile'],
+    queryFn: () => authApi.me().then((r) => r.data),
+    refetchInterval: 30_000,
+  });
+
+  // Keep Zustand store in sync with fresh profile data so navbar/other pages reflect current points
+  useEffect(() => {
+    if (profile && user && token) {
+      setAuth({
+        ...user,
+        totalPoints: profile.totalPoints,
+        exactScores: profile.exactScores,
+        correctResults: profile.correctResults,
+        correctGoals: profile.correctGoals,
+      }, token);
+    }
+  }, [profile]);
+
+  const hasPasswordAuth = !user?.oauthProvider || user.oauthProvider === 'local';
+  const isAdmin = user?.role === 'ADMIN';
+
+  // Use profile (server truth) with user store as fallback while loading
+  const totalPoints   = profile?.totalPoints   ?? user?.totalPoints   ?? 0;
+  const exactScores   = profile?.exactScores   ?? user?.exactScores   ?? 0;
+  const correctResults = profile?.correctResults ?? user?.correctResults ?? 0;
+  const rank          = stats?.rank;
+
+  const lastUpdated = statsUpdatedAt ? new Date(statsUpdatedAt) : null;
+
+  return (
+    <div className="page-container space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Perfil</h1>
+        {lastUpdated && (
+          <span className="text-[11px] text-text-muted flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />
+            En vivo · 30s
+          </span>
+        )}
+      </div>
+
+      {/* User info */}
+      <div className="glass-card p-4 flex items-center gap-4">
+        <div className="w-14 h-14 rounded-full bg-primary-700 flex items-center justify-center text-2xl font-bold shrink-0">
+          {user?.username?.[0]?.toUpperCase()}
+        </div>
+        <div>
+          <div className="font-bold text-lg">{user?.username}</div>
+          <div className="text-text-muted text-sm">{user?.email}</div>
+          {user?.oauthProvider && (
+            <span className="text-xs text-text-muted capitalize">via {user.oauthProvider}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Stats grid: 2x2 */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="glass-card p-4 text-center">
+          <div className="text-3xl font-black text-success">{totalPoints}</div>
+          <div className="text-xs text-text-muted mt-1">Puntos totales</div>
+        </div>
+        <div className="glass-card p-4 text-center">
+          <div className="text-3xl font-black text-primary-400">#{rank ?? '-'}</div>
+          <div className="text-xs text-text-muted mt-1">Posición</div>
+        </div>
+        <div className="glass-card p-4 text-center">
+          <div className="text-2xl font-bold text-yellow-400">{exactScores}</div>
+          <div className="text-xs text-text-muted mt-1">Marcadores exactos</div>
+        </div>
+        <div className="glass-card p-4 text-center">
+          <div className="text-2xl font-bold text-warning">{correctResults}</div>
+          <div className="text-xs text-text-muted mt-1">Resultados correctos</div>
+        </div>
+      </div>
+
+      {/* Champion prediction */}
+      <ChampionSection />
+
+      {/* ── Account settings (password-based accounts) ── */}
+      {hasPasswordAuth && (
+        <div className="space-y-3">
+          <h2 className="font-semibold text-sm text-text-muted uppercase tracking-wide">Seguridad de la cuenta</h2>
+          <EditProfileSection
+            currentEmail={user?.email || ''}
+            currentUsername={user?.username || ''}
+          />
+          <ChangePasswordSection />
+          {isAdmin && <TwoFactorSection enabled={!!profile?.twoFactorEnabled} />}
+        </div>
+      )}
+
+      {/* Recent predictions */}
+      {stats?.recentPredictions && stats.recentPredictions.length > 0 && (
+        <div className="glass-card overflow-hidden">
+          <div className="p-4 border-b border-white/5">
+            <h3 className="font-semibold">Últimas predicciones</h3>
+          </div>
+          <div className="divide-y divide-white/5">
+            {stats.recentPredictions.map((pred: any) => (
+              <div key={pred.id} className="flex items-center justify-between px-4 py-3 text-sm">
+                <div>
+                  <div className="font-medium">
+                    {pred.match.teamHome.name} vs {pred.match.teamAway.name}
+                  </div>
+                  <div className="text-xs text-text-muted">
+                    {format(new Date(pred.match.dateTime), 'd MMM', { locale: es })}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-semibold">{pred.predictedHome} - {pred.predictedAway}</div>
+                  {pred.pointsEarned > 0 && (
+                    <div className="text-xs text-success">+{pred.pointsEarned} pts</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
