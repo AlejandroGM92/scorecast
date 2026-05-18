@@ -260,7 +260,7 @@ export default function RulesPage() {
 
         <div className="px-5 py-3 bg-white/2 border-t border-white/5">
           <p className="text-xs text-text-muted">
-            💡 Si persiste el empate después de todos los criterios, los jugadores comparten la misma posición.
+            💡 Si persiste el empate después de todos los criterios, el ganador se definirá entre los empatados y los organizadores del evento mediante una decisión unánime.
           </p>
         </div>
       </section>
