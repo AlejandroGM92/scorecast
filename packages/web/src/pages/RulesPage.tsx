@@ -283,7 +283,7 @@ export default function RulesPage() {
               <p className="text-xs text-text-muted uppercase tracking-wide mb-1">Tu campeón</p>
               <p className="text-xl font-bold">{predictedTeam.name}</p>
               <p className="text-xs text-text-muted mt-1">
-                Cuota: <span className="text-primary-400 font-semibold">x{profile.championOdds}</span> pts si ganan
+                Bonus si ganan: <span className="text-primary-400 font-semibold">+{Math.round(profile.championOdds ?? 0)}</span> pts
               </p>
             </div>
             <div className="text-3xl">🏆</div>
@@ -337,7 +337,7 @@ export default function RulesPage() {
                             <img src={team.flag} alt={team.name} className="w-10 h-10 object-cover rounded" />
                             <div className="min-w-0">
                               <p className="font-semibold text-sm truncate">{team.name}</p>
-                              <p className="text-xs text-primary-400 font-semibold">x{team.championOdds} pts</p>
+                              <p className="text-xs text-primary-400 font-semibold">+{Math.round(team.championOdds)} pts</p>
                             </div>
                           </button>
                         ))}
@@ -381,15 +381,15 @@ export default function RulesPage() {
         {teams && teams.length > 0 && (
           <div className="glass-card overflow-hidden">
             <div className="px-4 py-3 border-b border-white/5">
-              <h3 className="font-semibold text-sm">Tabla de cuotas</h3>
-              <p className="text-xs text-text-muted">Puntos que ganarías si aciertas al campeón</p>
+              <h3 className="font-semibold text-sm">Tabla de bonus por campeón</h3>
+              <p className="text-xs text-text-muted">Puntos que se suman a tu total si aciertas al campeón</p>
             </div>
             <div className="divide-y divide-white/5 max-h-64 overflow-y-auto">
               {[...teams].filter(t => t.group).sort((a, b) => a.championOdds - b.championOdds).map((team) => (
                 <div key={team.code} className="flex items-center gap-3 px-4 py-2.5">
                   <img src={team.flag} alt={team.name} className="w-7 h-7 object-cover rounded" />
                   <span className="flex-1 text-sm font-medium">{team.name}</span>
-                  <span className="text-sm font-bold text-primary-400">x{team.championOdds}</span>
+                  <span className="text-sm font-bold text-primary-400">+{Math.round(team.championOdds)}</span>
                   <span className="text-xs text-text-muted w-8 text-right">pts</span>
                 </div>
               ))}

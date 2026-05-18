@@ -38,7 +38,8 @@ function PreviewReglas() {
       {[
         { icon: '🎯', label: 'Marcador exacto', pts: 3, color: 'text-yellow-400' },
         { icon: '✅', label: 'Resultado correcto', pts: 2, color: 'text-green-400' },
-        { icon: '⚽', label: 'Goles de un equipo', pts: 1, color: 'text-blue-400' },
+        { icon: '⚽', label: 'Goles del local', pts: 1, color: 'text-blue-400' },
+        { icon: '⚽', label: 'Goles del visitante', pts: 1, color: 'text-cyan-400' },
       ].map((r) => (
         <div key={r.label} className="flex items-center gap-2.5 px-3 py-2 border-b border-white/5 last:border-0">
           <span className="text-base">{r.icon}</span>
@@ -46,6 +47,9 @@ function PreviewReglas() {
           <span className={clsx('font-black text-base', r.color)}>{r.pts}<span className="text-[10px] font-normal text-text-muted ml-0.5">pts</span></span>
         </div>
       ))}
+      <div className="px-3 py-1.5 text-[10px] text-text-muted text-center border-t border-white/5">
+        💡 Son acumulativos — máximo <strong className="text-white">7 pts</strong> por partido (3+2+1+1)
+      </div>
     </div>
   );
 }
@@ -65,7 +69,7 @@ function PreviewCampeon() {
             <span className="text-xl">{t.flag}</span>
             <div className="min-w-0">
               <p className="text-xs font-semibold truncate">{t.name}</p>
-              <p className="text-[10px] text-primary-400 font-semibold">x{t.odds} pts</p>
+              <p className="text-[10px] text-primary-400 font-semibold">+{t.odds} pts</p>
             </div>
           </div>
         ))}
@@ -121,7 +125,7 @@ const STEPS = [
   {
     icon: '📋',
     title: 'Reglas y puntos',
-    description: 'Cada predicción puede darte hasta 3 puntos. Mientras más exacto, más puntos ganas.',
+    description: 'Cada predicción puede darte hasta 7 puntos. Los puntos son acumulativos: marcador exacto, resultado correcto y goles de cada equipo.',
     preview: <PreviewReglas />,
     action: '/reglas',
     actionLabel: 'Ver reglas completas',
@@ -130,7 +134,7 @@ const STEPS = [
   {
     icon: '🌍',
     title: 'Predicción del campeón',
-    description: 'Una vez, antes de que empiece el torneo, elige al campeón. Si aciertas, multiplicas puntos según la cuota.',
+    description: 'Una vez, antes de que empiece el torneo, elige al campeón. Si aciertas, sumas los puntos de tu cuota al final del torneo.',
     preview: <PreviewCampeon />,
     action: '/reglas',
     actionLabel: 'Elegir mi campeón',
