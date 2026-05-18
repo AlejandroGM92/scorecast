@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/database';
 import { adminAuth, AuthRequest } from '../middleware/auth';
+import { adminLimiter } from '../middleware/rateLimiter';
 import pointsService from '../services/points.service';
 import syncService from '../services/sync.service';
 import apiFootballService from '../services/apiFootball.service';

@@ -8,7 +8,7 @@ import morgan from 'morgan';
 
 import { connectDatabase, disconnectDatabase } from './config/database';
 import { configurePassport } from './config/passport';
-import { generalLimiter } from './middleware/rateLimiter';
+import { generalLimiter, adminLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 import { startAllJobs } from './jobs';
 import { logger } from './utils/logger';
@@ -34,7 +34,7 @@ app.use(
 
 // Logging
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('dev'));
+  app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 }
 
 // Body parsing
@@ -75,7 +75,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/matches', matchesRoutes);
 app.use('/api/predictions', predictionsRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin', adminLimiter, adminRoutes);
 app.use('/api/teams', teamsRoutes);
 
 // Error handler (must be last)

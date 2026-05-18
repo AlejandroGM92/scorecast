@@ -12,7 +12,7 @@ import bcrypt from 'bcryptjs';
 const router = Router();
 
 // ─── Token validation ────────────────────────────────────────────────────────
-router.get('/validate-token/:code', async (req, res, next) => {
+router.get('/validate-token/:code', authLimiter, async (req, res, next) => {
   try {
     const result = await authService.validateInvitationToken(req.params.code);
     res.json(result);
@@ -139,7 +139,7 @@ router.put('/change-password', auth, async (req: AuthRequest, res, next) => {
   try {
     const schema = z.object({
       currentPassword: z.string().min(1),
-      newPassword: z.string().min(6),
+      newPassword: z.string().min(8).max(100),
     });
     const { currentPassword, newPassword } = schema.parse(req.body);
 
