@@ -1,4 +1,4 @@
-import { MatchStatus } from '@prisma/client';
+type MatchStatus = 'SCHEDULED' | 'LOCKED' | 'LIVE' | 'HALFTIME' | 'FINISHED' | 'CANCELLED';
 import { prisma } from '../config/database';
 import apiFootballService from './apiFootball.service';
 import pointsService from './points.service';

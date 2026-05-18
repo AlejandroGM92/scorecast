@@ -7,6 +7,7 @@ import syncService from '../services/sync.service';
 import apiFootballService from '../services/apiFootball.service';
 import { syncWorldCupScores, syncWorldCupLive } from '../services/wcSync.service';
 import { sendMatchReminderEmail } from '../services/email.service';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
