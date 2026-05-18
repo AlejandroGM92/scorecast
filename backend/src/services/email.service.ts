@@ -87,7 +87,6 @@ export async function sendMatchReminderEmail(params: {
   matchTime: Date;
   hasPrediction: boolean;
 }): Promise<boolean> {
-  if (process.env.EMAIL_NOTIFICATIONS_ENABLED !== 'true') return false;
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) return false;
 
   const { to, username, homeTeam, awayTeam, matchTime, hasPrediction } = params;
