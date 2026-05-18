@@ -1,73 +1,82 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
     <radialGradient id="bg" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#1a1a3e"/>
+      <stop offset="0%" stop-color="#1a2a4a"/>
       <stop offset="100%" stop-color="#0d0d1a"/>
     </radialGradient>
-    <linearGradient id="grass" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1a7a3a"/>
-      <stop offset="50%" stop-color="#1e8f42"/>
-      <stop offset="100%" stop-color="#166832"/>
+    <linearGradient id="field" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="100%" stop-color="#0f1729"/>
     </linearGradient>
-    <!-- Stripe pattern for grass texture -->
-    <pattern id="stripes" x="0" y="0" width="7" height="44" patternUnits="userSpaceOnUse">
-      <rect width="7" height="44" fill="transparent"/>
-      <rect width="3.5" height="44" fill="rgba(0,0,0,0.08)"/>
+    <pattern id="stripes" x="0" y="0" width="6" height="64" patternUnits="userSpaceOnUse">
+      <rect width="6" height="64" fill="transparent"/>
+      <rect width="3" height="64" fill="rgba(255,255,255,0.03)"/>
     </pattern>
+    <!-- Clip everything to the circle -->
+    <clipPath id="circle-clip">
+      <circle cx="32" cy="32" r="29.5"/>
+    </clipPath>
   </defs>
 
-  <!-- Outer circle background -->
+  <!-- Outer background circle -->
   <circle cx="32" cy="32" r="31" fill="url(#bg)"/>
 
-  <!-- Field base -->
-  <rect x="5" y="11" width="54" height="42" rx="2" fill="url(#grass)"/>
-  <!-- Grass stripes -->
-  <rect x="5" y="11" width="54" height="42" rx="2" fill="url(#stripes)"/>
+  <!-- All field content clipped to circle -->
+  <g clip-path="url(#circle-clip)">
 
-  <!-- ── Field markings (white) ── -->
+    <!-- Field fill -->
+    <rect x="2.5" y="2.5" width="59" height="59" fill="url(#field)"/>
+    <!-- Subtle stripes -->
+    <rect x="2.5" y="2.5" width="59" height="59" fill="url(#stripes)"/>
 
-  <!-- Outer boundary -->
-  <rect x="5" y="11" width="54" height="42" rx="2" fill="none" stroke="white" stroke-width="1.2"/>
+    <!-- ── Field markings ── -->
 
-  <!-- Halfway line -->
-  <line x1="32" y1="11" x2="32" y2="53" stroke="white" stroke-width="1"/>
+    <!-- Outer boundary (inset so it's fully inside the clip) -->
+    <rect x="5" y="12" width="54" height="40" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1.1"/>
 
-  <!-- Center circle -->
-  <circle cx="32" cy="32" r="8.5" fill="none" stroke="white" stroke-width="1"/>
+    <!-- Halfway line -->
+    <line x1="32" y1="12" x2="32" y2="52" stroke="rgba(255,255,255,0.7)" stroke-width="1"/>
 
-  <!-- Center spot -->
-  <circle cx="32" cy="32" r="1.2" fill="white"/>
+    <!-- Center circle -->
+    <circle cx="32" cy="32" r="8" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1"/>
 
-  <!-- Left penalty area -->
-  <rect x="5" y="20" width="13" height="24" fill="none" stroke="white" stroke-width="1"/>
+    <!-- Center spot -->
+    <circle cx="32" cy="32" r="1.1" fill="rgba(255,255,255,0.9)"/>
 
-  <!-- Left goal area (6-yard box) -->
-  <rect x="5" y="25.5" width="5.5" height="13" fill="none" stroke="white" stroke-width="0.9"/>
+    <!-- Left penalty area -->
+    <rect x="5" y="21" width="13" height="22" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1"/>
 
-  <!-- Left goal (on boundary) -->
-  <rect x="3" y="28" width="2" height="8" rx="0.5" fill="none" stroke="white" stroke-width="1"/>
+    <!-- Left 6-yard box -->
+    <rect x="5" y="26" width="5" height="12" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="0.9"/>
 
-  <!-- Left penalty spot -->
-  <circle cx="22" cy="32" r="0.9" fill="white"/>
+    <!-- Left goal -->
+    <rect x="3" y="28.5" width="2" height="7" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="1.1"/>
 
-  <!-- Right penalty area -->
-  <rect x="46" y="20" width="13" height="24" fill="none" stroke="white" stroke-width="1"/>
+    <!-- Left penalty spot -->
+    <circle cx="22" cy="32" r="0.9" fill="rgba(255,255,255,0.8)"/>
 
-  <!-- Right goal area (6-yard box) -->
-  <rect x="53" y="25.5" width="5.5" height="13" fill="none" stroke="white" stroke-width="0.9"/>
+    <!-- Right penalty area -->
+    <rect x="46" y="21" width="13" height="22" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1"/>
 
-  <!-- Right goal (on boundary) -->
-  <rect x="59" y="28" width="2" height="8" rx="0.5" fill="none" stroke="white" stroke-width="1"/>
+    <!-- Right 6-yard box -->
+    <rect x="54" y="26" width="5" height="12" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="0.9"/>
 
-  <!-- Right penalty spot -->
-  <circle cx="42" cy="32" r="0.9" fill="white"/>
+    <!-- Right goal -->
+    <rect x="59" y="28.5" width="2" height="7" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="1.1"/>
 
-  <!-- Corner arcs (quarter circles) -->
-  <path d="M5,14 A3,3 0 0,1 8,11"  fill="none" stroke="white" stroke-width="0.9"/>
-  <path d="M56,11 A3,3 0 0,1 59,14" fill="none" stroke="white" stroke-width="0.9"/>
-  <path d="M5,50  A3,3 0 0,0 8,53"  fill="none" stroke="white" stroke-width="0.9"/>
-  <path d="M56,53 A3,3 0 0,0 59,50" fill="none" stroke="white" stroke-width="0.9"/>
+    <!-- Right penalty spot -->
+    <circle cx="42" cy="32" r="0.9" fill="rgba(255,255,255,0.8)"/>
 
-  <!-- Outer ring accent -->
-  <circle cx="32" cy="32" r="31" fill="none" stroke="#2e5f2e" stroke-width="1.5"/>
+    <!-- Corner arcs -->
+    <path d="M5,15  A3,3 0 0,1 8,12"  fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="0.9"/>
+    <path d="M56,12 A3,3 0 0,1 59,15" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="0.9"/>
+    <path d="M5,49  A3,3 0 0,0 8,52"  fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="0.9"/>
+    <path d="M56,52 A3,3 0 0,0 59,49" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="0.9"/>
+
+  </g>
+
+  <!-- Outer border ring -->
+  <circle cx="32" cy="32" r="30.5" fill="none" stroke="#2a4a7f" stroke-width="1.2"/>
+  <!-- Inner glow ring -->
+  <circle cx="32" cy="32" r="29.5" fill="none" stroke="rgba(74,128,196,0.3)" stroke-width="0.8"/>
 </svg>
