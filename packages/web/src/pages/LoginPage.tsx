@@ -66,7 +66,14 @@ export default function LoginPage() {
 
         <p className="text-center text-xs text-text-muted">
           ¿No tienes cuenta?{' '}
-          <span className="text-primary-400">Solicita un link de invitación al administrador</span>
+          <a
+            href="https://wa.me/573162322729"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary-400 hover:underline"
+          >
+            Solicita un link de invitación al administrador
+          </a>
         </p>
       </div>
 
