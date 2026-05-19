@@ -67,7 +67,7 @@ export default function LoginPage() {
         <p className="text-center text-xs text-text-muted">
           ¿No tienes cuenta?{' '}
           <a
-            href="https://wa.me/573162322729"
+            href="https://wa.me/573162322729?text=Hola%2C%20quisiera%20solicitar%20un%20link%20de%20invitaci%C3%B3n%20para%20unirme%20a%20SCORECAST%20%F0%9F%8E%AB"
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary-400 hover:underline"

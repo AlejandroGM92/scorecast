@@ -514,7 +514,7 @@ export default function ProfilePage() {
           Para reportar cualquier inconsistencia o problema con la app, comunícate con nosotros por WhatsApp.
         </p>
         <a
-          href="https://wa.me/573162322729"
+          href="https://wa.me/573162322729?text=Hola%2C%20necesito%20ayuda%20con%20la%20app%20SCORECAST%20%F0%9F%8F%86"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 w-full py-2.5 px-4 rounded-lg bg-green-600 hover:bg-green-500 transition-colors text-white font-semibold text-sm justify-center"
