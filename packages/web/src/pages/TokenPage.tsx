@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { authApi } from '@/services/api';
+import { clsx } from 'clsx';
 import type { TokenValidation } from '../../../shared/types';
 
 const GoogleIcon = () => (
@@ -14,6 +16,7 @@ const GoogleIcon = () => (
 
 export default function TokenPage() {
   const { code } = useParams<{ code: string }>();
+  const [accepted, setAccepted] = useState(false);
 
   const { data, isLoading, isError } = useQuery<TokenValidation>({
     queryKey: ['token', code],
@@ -62,13 +65,65 @@ export default function TokenPage() {
         )}
       </div>
 
-      <a
-        href={`${import.meta.env.VITE_API_URL || ''}/api/auth/google?token=${code}`}
-        className="flex items-center justify-center gap-3 w-full py-3 px-4 bg-white text-gray-800 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
-      >
-        <GoogleIcon />
-        Registrarme con Google
-      </a>
+      {/* Data authorization checkbox */}
+      <div className="bg-white/5 rounded-xl p-4 border border-white/10 space-y-3">
+        <p className="text-xs font-semibold text-text-muted uppercase tracking-wide">
+          Autorización de datos personales
+        </p>
+        <p className="text-xs text-text-muted leading-relaxed">
+          Al registrarte, autorizas a <strong className="text-white">SCORECAST</strong> a
+          recopilar y utilizar tu nombre, correo electrónico y foto de perfil de Google
+          con el único propósito de gestionar tu participación en el torneo de predicciones.
+          Tus datos no serán compartidos con terceros ni usados con fines comerciales.
+        </p>
+        <label className="flex items-start gap-3 cursor-pointer group">
+          <div className="relative mt-0.5 shrink-0">
+            <input
+              type="checkbox"
+              checked={accepted}
+              onChange={(e) => setAccepted(e.target.checked)}
+              className="sr-only"
+            />
+            <div className={clsx(
+              'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
+              accepted
+                ? 'bg-primary-500 border-primary-500'
+                : 'border-white/30 bg-white/5 group-hover:border-white/50'
+            )}>
+              {accepted && (
+                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
+          </div>
+          <span className="text-sm text-text-muted group-hover:text-white transition-colors">
+            He leído y acepto el uso de mis datos personales para participar en SCORECAST
+          </span>
+        </label>
+      </div>
+
+      {/* Google OAuth button */}
+      <div className="space-y-2">
+        <a
+          href={accepted ? `${import.meta.env.VITE_API_URL || ''}/api/auth/google?token=${code}` : '#'}
+          onClick={!accepted ? (e) => e.preventDefault() : undefined}
+          className={clsx(
+            'flex items-center justify-center gap-3 w-full py-3 px-4 rounded-lg font-semibold transition-all',
+            accepted
+              ? 'bg-white text-gray-800 hover:bg-gray-100'
+              : 'bg-white/20 text-white/40 cursor-not-allowed'
+          )}
+        >
+          <GoogleIcon />
+          Registrarme con Google
+        </a>
+        {!accepted && (
+          <p className="text-center text-xs text-text-muted/60">
+            Acepta la autorización de datos para continuar
+          </p>
+        )}
+      </div>
 
       <p className="text-center text-xs text-text-muted">
         ¿Ya tienes cuenta?{' '}
