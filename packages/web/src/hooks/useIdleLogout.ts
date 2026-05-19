@@ -9,7 +9,7 @@ const WARN_BEFORE  =  2 * 60 * 1000; // warn at 18 minutes
 const EVENTS = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'] as const;
 
 export function useIdleLogout() {
-  const { isAuthenticated, logout } = useAuthStore();
+  const { isAuthenticated, logout, user } = useAuthStore();
   const navigate = useNavigate();
   const logoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warnTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -37,8 +37,9 @@ export function useIdleLogout() {
 
       logoutTimer.current = setTimeout(() => {
         clearTimers();
+        const isAdmin = user?.role === 'ADMIN';
         logout();
-        navigate('/login', { replace: true });
+        navigate(isAdmin ? '/sc-admin' : '/login', { replace: true });
         toast.error('Sesión cerrada por inactividad');
       }, IDLE_TIMEOUT);
     };
