@@ -526,7 +526,7 @@ export default function ProfilePage() {
             <div className="bg-white/5 rounded-lg p-3 space-y-1">
               <p className="text-xs font-semibold text-white">Cómo conectar:</p>
               <ol className="text-xs text-text-muted space-y-1 list-decimal list-inside">
-                <li>Abre Telegram y busca <span className="text-primary-400 font-mono">@ScorecastBot</span></li>
+                <li>Abre Telegram y busca <span className="text-primary-400 font-mono">@Scorecast_Not_Bot</span></li>
                 <li>Envía el mensaje: <span className="text-primary-400 font-mono">/link {user?.username}</span></li>
                 <li>Listo, recibirás un mensaje de confirmación</li>
               </ol>
