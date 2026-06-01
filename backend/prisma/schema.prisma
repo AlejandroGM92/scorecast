@@ -48,7 +48,8 @@ model User {
   twoFactorSecret  String?
   twoFactorEnabled Boolean @default(false)
 
-  whatsappNumber String?  @db.VarChar(20)
+  whatsappNumber  String? @db.VarChar(20)
+  telegramChatId  String? @db.VarChar(20)
 
   sessionVersion Int      @default(1)
   lastLoginAt    DateTime?

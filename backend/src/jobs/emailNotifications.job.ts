@@ -18,7 +18,25 @@ async function sendWhatsappWebhook(payload: {
   try {
     await axios.post(webhookUrl, payload, { timeout: 5000 });
   } catch (err: any) {
-    logger.warn(`⚠️ n8n webhook failed for ${payload.phone}: ${err.message}`);
+    logger.warn(`⚠️ n8n WhatsApp webhook failed for ${payload.phone}: ${err.message}`);
+  }
+}
+
+async function sendTelegramWebhook(payload: {
+  chatId: string;
+  username: string;
+  homeTeam: string;
+  awayTeam: string;
+  matchTime: Date;
+  hasPrediction: boolean;
+  appUrl: string;
+}) {
+  const webhookUrl = process.env.N8N_TELEGRAM_WEBHOOK_URL;
+  if (!webhookUrl) return;
+  try {
+    await axios.post(webhookUrl, payload, { timeout: 5000 });
+  } catch (err: any) {
+    logger.warn(`⚠️ n8n Telegram webhook failed for ${payload.chatId}: ${err.message}`);
   }
 }
 
@@ -62,7 +80,7 @@ export function startEmailNotificationsJob() {
       const matchesToNotify = upcomingMatches.filter((m) => !alreadyNotifiedMatchIds.has(m.id));
       if (matchesToNotify.length === 0) return;
 
-      // Get all active users with their emails
+      // Get all active users
       const users = await prisma.user.findMany({
         where: { isActive: true },
         select: {
@@ -70,6 +88,7 @@ export function startEmailNotificationsJob() {
           email: true,
           username: true,
           whatsappNumber: true,
+          telegramChatId: true,
           predictions: {
             where: { matchId: { in: matchesToNotify.map((m) => m.id) } },
             select: { matchId: true },
@@ -82,6 +101,7 @@ export function startEmailNotificationsJob() {
       for (const match of matchesToNotify) {
         for (const user of users) {
           const hasPrediction = user.predictions.some((p) => p.matchId === match.id);
+          const appUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
           await prisma.notification.create({
             data: {
@@ -107,7 +127,6 @@ export function startEmailNotificationsJob() {
             if (sent) emailsSent++;
           }
 
-          // WhatsApp via n8n webhook (independent of email toggle)
           if (user.whatsappNumber) {
             await sendWhatsappWebhook({
               phone: user.whatsappNumber,
@@ -116,7 +135,19 @@ export function startEmailNotificationsJob() {
               awayTeam: match.teamAway.name,
               matchTime: match.dateTime,
               hasPrediction,
-              appUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+              appUrl,
+            });
+          }
+
+          if (user.telegramChatId) {
+            await sendTelegramWebhook({
+              chatId: user.telegramChatId,
+              username: user.username,
+              homeTeam: match.teamHome.name,
+              awayTeam: match.teamAway.name,
+              matchTime: match.dateTime,
+              hasPrediction,
+              appUrl,
             });
           }
         }

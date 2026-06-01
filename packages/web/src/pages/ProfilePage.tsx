@@ -507,6 +507,34 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {/* Telegram notifications */}
+      <div className="glass-card p-4 space-y-3">
+        <h2 className="font-semibold text-sm text-text-muted uppercase tracking-wide">Notificaciones Telegram</h2>
+        {(profile as any)?.telegramChatId ? (
+          <div className="flex items-center gap-3 py-2">
+            <span className="text-2xl">✅</span>
+            <div>
+              <p className="text-sm font-semibold">Telegram conectado</p>
+              <p className="text-xs text-text-muted">Recibirás alertas 1 hora antes de cada partido</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-text-muted">
+              Recibe una alerta en Telegram 1 hora antes de cada partido para no olvidar tu predicción.
+            </p>
+            <div className="bg-white/5 rounded-lg p-3 space-y-1">
+              <p className="text-xs font-semibold text-white">Cómo conectar:</p>
+              <ol className="text-xs text-text-muted space-y-1 list-decimal list-inside">
+                <li>Abre Telegram y busca <span className="text-primary-400 font-mono">@ScorecastBot</span></li>
+                <li>Envía el mensaje: <span className="text-primary-400 font-mono">/link {user?.username}</span></li>
+                <li>Listo, recibirás un mensaje de confirmación</li>
+              </ol>
+            </div>
+          </>
+        )}
+      </div>
+
       {/* Help section */}
       <div className="glass-card p-4 space-y-2">
         <h2 className="font-semibold text-sm text-text-muted uppercase tracking-wide">Ayuda</h2>

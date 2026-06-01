@@ -11,6 +11,22 @@ import bcrypt from 'bcryptjs';
 
 const router = Router();
 
+// ─── Link Telegram (called by n8n, not the browser) ──────────────────────────
+router.post('/link-telegram', async (req, res, next) => {
+  try {
+    const { username, chatId, secret } = req.body;
+    if (!secret || secret !== process.env.N8N_SECRET) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const user = await prisma.user.findFirst({ where: { username } });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado en SCORECAST' });
+    await prisma.user.update({ where: { id: user.id }, data: { telegramChatId: String(chatId) } });
+    res.json({ success: true, message: `✅ ¡Listo! Telegram conectado para ${username}` });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // ─── Token validation ────────────────────────────────────────────────────────
 router.get('/validate-token/:code', authLimiter, async (req, res, next) => {
   try {
@@ -111,6 +127,7 @@ router.get('/me', auth, async (req: AuthRequest, res, next) => {
         twoFactorEnabled: true,
         oauthProvider: true,
         whatsappNumber: true,
+        telegramChatId: true,
         createdAt: true,
       },
     });
