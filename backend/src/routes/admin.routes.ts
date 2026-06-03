@@ -490,79 +490,63 @@ router.post('/wc-sync-live', adminAuth, async (_req, res, next) => {
 });
 
 
-// POST /api/admin/simulate-matches — create 5 test matches, auto-generate predictions and calculate points
+// POST /api/admin/simulate-matches — apply simulated results to existing matches using real user predictions
 router.post('/simulate-matches', adminAuth, async (_req, res, next) => {
-  const TEST_ID_BASE = 99000;
-
-  // Pairs using exact DB names (confirmed via /api/teams)
+  // Team name patterns → simulated result (using real existing matches in DB)
   const plan = [
-    { h: 'México',           a: 'South Africa',       sh: 2, sa: 1 },
-    { h: 'Corea del Sur',    a: 'Czechia',             sh: 1, sa: 1 },
-    { h: 'Canadá',           a: 'Bosnia-Herzegovina',  sh: 0, sa: 2 },
-    { h: 'Estados Unidos',   a: 'Paraguay',            sh: 3, sa: 0 },
-    { h: 'Qatar',            a: 'Suiza',               sh: 1, sa: 3 },
+    { h: 'México',         a: 'South Africa',      sh: 2, sa: 1 },
+    { h: 'Corea del Sur',  a: 'Czechia',            sh: 1, sa: 1 },
+    { h: 'Canadá',         a: 'Bosnia',             sh: 0, sa: 2 },
+    { h: 'Estados Unidos', a: 'Paraguay',           sh: 3, sa: 0 },
+    { h: 'Qatar',          a: 'Suiza',              sh: 1, sa: 3 },
   ];
 
   try {
-    const users = await prisma.user.findMany({
-      where: { isActive: true },
-      select: { id: true },
-    });
-
     const results: any[] = [];
+    const simulatedIds: string[] = [];
 
-    for (let i = 0; i < plan.length; i++) {
-      const p = plan[i];
-      const apiId = TEST_ID_BASE + i + 1;
+    for (const p of plan) {
+      // Find existing match with these teams
+      const match = await prisma.match.findFirst({
+        where: {
+          teamHome: { name: { contains: p.h, mode: 'insensitive' } },
+          teamAway: { name: { contains: p.a, mode: 'insensitive' } },
+        },
+        include: { teamHome: true, teamAway: true },
+      });
 
-      // Find teams by approximate name
-      const teamHome = await prisma.team.findFirst({ where: { name: { contains: p.h, mode: 'insensitive' } } });
-      const teamAway = await prisma.team.findFirst({ where: { name: { contains: p.a, mode: 'insensitive' } } });
-
-      if (!teamHome || !teamAway) {
-        results.push({ match: `${p.h} vs ${p.a}`, error: `Equipo no encontrado en DB` });
+      if (!match) {
+        results.push({ match: `${p.h} vs ${p.a}`, error: 'Partido no encontrado en la BD' });
         continue;
       }
 
-      // Upsert match
-      const match = await prisma.match.upsert({
-        where: { apiFootballId: apiId },
-        update: { scoreHome: p.sh, scoreAway: p.sa, status: 'FINISHED', pointsCalculated: false },
-        create: {
-          apiFootballId: apiId,
-          phase: 'GROUP_STAGE',
-          matchNumber: 900 + i,
-          teamHomeId: teamHome.id,
-          teamAwayId: teamAway.id,
-          dateTime: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          scoreHome: p.sh,
-          scoreAway: p.sa,
-          status: 'FINISHED',
-          pointsCalculated: false,
-        },
+      // Save original state in SystemConfig so cleanup can revert
+      await prisma.systemConfig.upsert({
+        where: { key: `sim_orig_${match.id}` },
+        update: { value: JSON.stringify({ status: match.status, scoreHome: match.scoreHome, scoreAway: match.scoreAway, pointsCalculated: match.pointsCalculated }) },
+        create: { key: `sim_orig_${match.id}`, value: JSON.stringify({ status: match.status, scoreHome: match.scoreHome, scoreAway: match.scoreAway, pointsCalculated: match.pointsCalculated }) },
       });
 
-      // Create predictions for each user with varying accuracy
-      for (let u = 0; u < users.length; u++) {
-        const user = users[u];
-        // Rotate: exact / correct result / wrong
-        const tier = (u + i) % 3;
-        let predHome: number, predAway: number;
-        if (tier === 0) { predHome = p.sh; predAway = p.sa; }           // exact score
-        else if (tier === 1) { predHome = p.sh + 1; predAway = p.sa + 1; } // correct result
-        else { predHome = p.sa; predAway = p.sh; }                        // wrong
+      // Apply simulated result
+      await prisma.match.update({
+        where: { id: match.id },
+        data: { status: 'FINISHED', scoreHome: p.sh, scoreAway: p.sa, pointsCalculated: false },
+      });
 
-        await prisma.prediction.upsert({
-          where: { userId_matchId: { userId: user.id, matchId: match.id } },
-          update: { predictedHome: predHome, predictedAway: predAway, pointsEarned: 0 },
-          create: { userId: user.id, matchId: match.id, predictedHome: predHome, predictedAway: predAway },
-        });
-      }
-
-      // Calculate points
+      // Calculate points using existing user predictions
       await pointsService.recalculateMatch(match.id);
-      results.push({ match: `${teamHome.name} vs ${teamAway.name}`, score: `${p.sh}-${p.sa}`, matchId: match.id });
+
+      simulatedIds.push(match.id);
+      const preds = await prisma.prediction.count({ where: { matchId: match.id } });
+      results.push({ match: `${match.teamHome.name} vs ${match.teamAway.name}`, score: `${p.sh}-${p.sa}`, predictions: preds });
     }
+
+    // Store list of simulated match IDs for cleanup
+    await prisma.systemConfig.upsert({
+      where: { key: 'simulated_match_ids' },
+      update: { value: simulatedIds.join(',') },
+      create: { key: 'simulated_match_ids', value: simulatedIds.join(',') },
+    });
 
     res.json({ success: true, results });
   } catch (error) {
@@ -570,22 +554,58 @@ router.post('/simulate-matches', adminAuth, async (_req, res, next) => {
   }
 });
 
-// DELETE /api/admin/simulate-matches — clean up test matches and their predictions
+// DELETE /api/admin/simulate-matches — revert simulated results back to original state
 router.delete('/simulate-matches', adminAuth, async (_req, res, next) => {
   try {
-    const testMatches = await prisma.match.findMany({
-      where: { apiFootballId: { gte: 99001, lte: 99010 } },
-      select: { id: true },
-    });
-    const ids = testMatches.map((m) => m.id);
+    const config = await prisma.systemConfig.findUnique({ where: { key: 'simulated_match_ids' } });
+    if (!config?.value) return res.json({ success: true, reverted: 0 });
 
-    await prisma.prediction.deleteMany({ where: { matchId: { in: ids } } });
-    await prisma.match.deleteMany({ where: { id: { in: ids } } });
+    const ids = config.value.split(',').filter(Boolean);
+    let reverted = 0;
 
-    // Recalculate all user totals after cleanup
-    await pointsService.calculatePointsForFinishedMatches();
+    for (const matchId of ids) {
+      const origConfig = await prisma.systemConfig.findUnique({ where: { key: `sim_orig_${matchId}` } });
+      if (!origConfig) continue;
 
-    res.json({ success: true, deleted: ids.length });
+      const orig = JSON.parse(origConfig.value);
+
+      // Reverse points from predictions
+      const predictions = await prisma.prediction.findMany({
+        where: { matchId },
+        select: { id: true, userId: true, pointsEarned: true, isExactScore: true, isCorrectResult: true, hasCorrectGoal: true },
+      });
+
+      for (const pred of predictions) {
+        if (pred.pointsEarned > 0) {
+          await prisma.user.update({
+            where: { id: pred.userId },
+            data: {
+              totalPoints:    { decrement: pred.pointsEarned },
+              exactScores:    { decrement: pred.isExactScore ? 1 : 0 },
+              correctResults: { decrement: pred.isCorrectResult ? 1 : 0 },
+              correctGoals:   { decrement: pred.hasCorrectGoal ? 1 : 0 },
+            },
+          });
+        }
+        await prisma.prediction.update({
+          where: { id: pred.id },
+          data: { pointsEarned: 0, pointsExact: 0, pointsResult: 0, pointsGoals: 0, isExactScore: false, isCorrectResult: false, hasCorrectGoal: false },
+        });
+      }
+
+      // Restore original match state
+      await prisma.match.update({
+        where: { id: matchId },
+        data: { status: orig.status, scoreHome: orig.scoreHome, scoreAway: orig.scoreAway, pointsCalculated: orig.pointsCalculated },
+      });
+
+      // Clean up SystemConfig keys
+      await prisma.systemConfig.delete({ where: { key: `sim_orig_${matchId}` } });
+      reverted++;
+    }
+
+    await prisma.systemConfig.delete({ where: { key: 'simulated_match_ids' } });
+    res.json({ success: true, reverted });
   } catch (error) {
     next(error);
   }
