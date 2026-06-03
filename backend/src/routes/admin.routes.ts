@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import axios from 'axios';
 import { prisma } from '../config/database';
 import { adminAuth, AuthRequest } from '../middleware/auth';
 import { adminLimiter } from '../middleware/rateLimiter';
@@ -482,5 +483,53 @@ router.post('/wc-sync-live', adminAuth, async (_req, res, next) => {
   }
 });
 
+
+// POST /api/admin/test-notify-all — send test notification to all active users (email + Telegram)
+router.post('/test-notify-all', adminAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { homeTeam = 'México', awayTeam = 'España', hasPrediction = false } = req.body;
+    const matchTime = new Date(Date.now() + 60 * 60 * 1000);
+    const appUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+    const users = await prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, email: true, username: true, telegramChatId: true },
+    });
+
+    let emailsSent = 0;
+    let telegramSent = 0;
+
+    for (const user of users) {
+      if (user.email) {
+        const sent = await sendMatchReminderEmail({
+          to: user.email,
+          username: user.username,
+          homeTeam,
+          awayTeam,
+          matchTime,
+          hasPrediction,
+        });
+        if (sent) emailsSent++;
+      }
+
+      if (user.telegramChatId) {
+        const webhookUrl = process.env.N8N_TELEGRAM_WEBHOOK_URL;
+        if (webhookUrl) {
+          try {
+            await axios.post(webhookUrl, { chatId: user.telegramChatId, username: user.username, homeTeam, awayTeam, matchTime, hasPrediction, appUrl }, { timeout: 5000 });
+            telegramSent++;
+          } catch (err: any) {
+            logger.warn(`⚠️ Telegram test failed for ${user.username}: ${err.message}`);
+          }
+        }
+      }
+    }
+
+    logger.info(`🧪 Test notify: ${emailsSent} emails, ${telegramSent} Telegram msgs to ${users.length} users`);
+    res.json({ success: true, users: users.length, emailsSent, telegramSent });
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router;

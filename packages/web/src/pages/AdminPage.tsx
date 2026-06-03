@@ -406,6 +406,56 @@ function EmailToggleCard() {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Test Notify All Button ──────────────────────────────────────────────────
+function TestNotifyAllButton() {
+  const [homeTeam, setHomeTeam] = useState('México');
+  const [awayTeam, setAwayTeam] = useState('España');
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: () => adminApi.testNotifyAll(homeTeam, awayTeam),
+    onSuccess: ({ data }) => toast.success(
+      `✅ Enviado: ${data.emailsSent} emails, ${data.telegramSent} Telegram a ${data.users} usuarios`
+    ),
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error al enviar'),
+  });
+
+  return (
+    <div className="glass-card p-4 space-y-3">
+      <p className="text-sm font-semibold">🧪 Prueba de notificaciones (todos los usuarios)</p>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={homeTeam}
+          onChange={(e) => setHomeTeam(e.target.value)}
+          className="input-field flex-1 text-sm"
+          placeholder="Equipo local"
+        />
+        <input
+          type="text"
+          value={awayTeam}
+          onChange={(e) => setAwayTeam(e.target.value)}
+          className="input-field flex-1 text-sm"
+          placeholder="Equipo visitante"
+        />
+      </div>
+      <button
+        onClick={() => mutate()}
+        disabled={isPending}
+        className="btn-primary w-full flex items-center justify-center gap-2 text-sm"
+      >
+        {isPending ? (
+          <>
+            <span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />
+            Enviando...
+          </>
+        ) : (
+          '📲 Enviar a todos (Email + Telegram)'
+        )}
+      </button>
+    </div>
+  );
+}
+
 // ─── Test Email Button ───────────────────────────────────────────────────────
 function TestEmailButton() {
   const { mutate, isPending } = useMutation({
@@ -951,6 +1001,7 @@ export default function AdminPage() {
             </span>
           </div>
           <EmailToggleCard />
+          <TestNotifyAllButton />
           <TestEmailButton />
           <div className="glass-card overflow-hidden">
             <div className="p-3 border-b border-white/5 text-xs text-text-muted font-medium">Historial de llamadas</div>
