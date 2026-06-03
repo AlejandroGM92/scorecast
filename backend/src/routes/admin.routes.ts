@@ -484,6 +484,107 @@ router.post('/wc-sync-live', adminAuth, async (_req, res, next) => {
 });
 
 
+// POST /api/admin/simulate-matches — create 5 test matches, auto-generate predictions and calculate points
+router.post('/simulate-matches', adminAuth, async (_req, res, next) => {
+  const TEST_ID_BASE = 99000;
+
+  // Pairs: [homeName pattern, awayName pattern, scoreHome, scoreAway]
+  const plan = [
+    { h: 'México',        a: 'Marruecos',      sh: 2, sa: 1 },
+    { h: 'Corea',         a: 'Polonia',         sh: 1, sa: 1 },
+    { h: 'Canadá',        a: 'Croacia',         sh: 0, sa: 2 },
+    { h: 'Estados',       a: 'Uruguay',         sh: 3, sa: 0 },
+    { h: 'Qatar',         a: 'Suiza',           sh: 1, sa: 3 },
+  ];
+
+  try {
+    const users = await prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true },
+    });
+
+    const results: any[] = [];
+
+    for (let i = 0; i < plan.length; i++) {
+      const p = plan[i];
+      const apiId = TEST_ID_BASE + i + 1;
+
+      // Find teams by approximate name
+      const teamHome = await prisma.team.findFirst({ where: { name: { contains: p.h, mode: 'insensitive' } } });
+      const teamAway = await prisma.team.findFirst({ where: { name: { contains: p.a, mode: 'insensitive' } } });
+
+      if (!teamHome || !teamAway) {
+        results.push({ match: `${p.h} vs ${p.a}`, error: `Equipo no encontrado en DB` });
+        continue;
+      }
+
+      // Upsert match
+      const match = await prisma.match.upsert({
+        where: { apiFootballId: apiId },
+        update: { scoreHome: p.sh, scoreAway: p.sa, status: 'FINISHED', pointsCalculated: false },
+        create: {
+          apiFootballId: apiId,
+          phase: 'GROUP_STAGE',
+          matchNumber: 900 + i,
+          teamHomeId: teamHome.id,
+          teamAwayId: teamAway.id,
+          dateTime: new Date(Date.now() - 2 * 60 * 60 * 1000),
+          scoreHome: p.sh,
+          scoreAway: p.sa,
+          status: 'FINISHED',
+          pointsCalculated: false,
+        },
+      });
+
+      // Create predictions for each user with varying accuracy
+      for (let u = 0; u < users.length; u++) {
+        const user = users[u];
+        // Rotate: exact / correct result / wrong
+        const tier = (u + i) % 3;
+        let predHome: number, predAway: number;
+        if (tier === 0) { predHome = p.sh; predAway = p.sa; }           // exact score
+        else if (tier === 1) { predHome = p.sh + 1; predAway = p.sa + 1; } // correct result
+        else { predHome = p.sa; predAway = p.sh; }                        // wrong
+
+        await prisma.prediction.upsert({
+          where: { userId_matchId: { userId: user.id, matchId: match.id } },
+          update: { predictedHome: predHome, predictedAway: predAway, pointsEarned: 0 },
+          create: { userId: user.id, matchId: match.id, predictedHome: predHome, predictedAway: predAway },
+        });
+      }
+
+      // Calculate points
+      await pointsService.recalculateMatch(match.id);
+      results.push({ match: `${teamHome.name} vs ${teamAway.name}`, score: `${p.sh}-${p.sa}`, matchId: match.id });
+    }
+
+    res.json({ success: true, results });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/admin/simulate-matches — clean up test matches and their predictions
+router.delete('/simulate-matches', adminAuth, async (_req, res, next) => {
+  try {
+    const testMatches = await prisma.match.findMany({
+      where: { apiFootballId: { gte: 99001, lte: 99010 } },
+      select: { id: true },
+    });
+    const ids = testMatches.map((m) => m.id);
+
+    await prisma.prediction.deleteMany({ where: { matchId: { in: ids } } });
+    await prisma.match.deleteMany({ where: { id: { in: ids } } });
+
+    // Recalculate all user totals after cleanup
+    await pointsService.calculatePointsForFinishedMatches();
+
+    res.json({ success: true, deleted: ids.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/admin/test-notify-all — send test notification to all active users (email + Telegram)
 router.post('/test-notify-all', adminAuth, async (req: AuthRequest, res, next) => {
   try {

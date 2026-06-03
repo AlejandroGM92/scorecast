@@ -98,6 +98,8 @@ export const adminApi = {
   apiUsage: () => api.get('/admin/api-usage'),
   testEmail: () => api.post('/admin/test-email'),
   testNotifyAll: (homeTeam: string, awayTeam: string) => api.post('/admin/test-notify-all', { homeTeam, awayTeam, hasPrediction: false }),
+  simulateMatches: () => api.post('/admin/simulate-matches'),
+  cleanupSimulation: () => api.delete('/admin/simulate-matches'),
   emailToggle: {
     get: () => api.get('/admin/email-toggle'),
     toggle: () => api.post('/admin/email-toggle'),
