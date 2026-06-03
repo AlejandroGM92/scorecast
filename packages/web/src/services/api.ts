@@ -41,6 +41,7 @@ export const authApi = {
   updateChampion: (teamCode: string) => api.put('/auth/champion', { teamCode }),
   notifications: () => api.get('/auth/notifications'),
   markNotificationsRead: () => api.put('/auth/notifications/read'),
+  clearNotifications: () => api.delete('/auth/notifications'),
   // 2FA
   setup2FA: () => api.get('/auth/2fa/setup'),
   enable2FA: (code: string) => api.post('/auth/2fa/enable', { code }),

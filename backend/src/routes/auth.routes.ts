@@ -340,4 +340,15 @@ router.put('/notifications/read', auth, async (req: AuthRequest, res, next) => {
   }
 });
 
+router.delete('/notifications', auth, async (req: AuthRequest, res, next) => {
+  try {
+    const { count } = await prisma.notification.deleteMany({
+      where: { userId: req.user!.id },
+    });
+    res.json({ success: true, deleted: count });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

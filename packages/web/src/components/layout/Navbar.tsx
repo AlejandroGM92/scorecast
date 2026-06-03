@@ -36,6 +36,11 @@ export default function Navbar() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
   });
 
+  const clearAll = useMutation({
+    mutationFn: () => authApi.clearNotifications(),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['notifications'] }); setShowNotifs(false); },
+  });
+
   const unreadCount = notifications?.filter((n: any) => !n.isRead).length || 0;
 
   const handleBell = () => {
@@ -99,7 +104,18 @@ export default function Navbar() {
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowNotifs(false)} />
                 <div className="absolute right-0 top-10 z-50 w-72 bg-[#0f1729] border border-white/10 rounded-xl shadow-xl overflow-hidden">
-                  <div className="px-4 py-3 border-b border-white/5 text-sm font-semibold">Notificaciones</div>
+                  <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+                    <span className="text-sm font-semibold">Notificaciones</span>
+                    {notifications && notifications.length > 0 && (
+                      <button
+                        onClick={() => clearAll.mutate()}
+                        disabled={clearAll.isPending}
+                        className="text-xs text-text-muted hover:text-danger transition-colors"
+                      >
+                        Eliminar todas
+                      </button>
+                    )}
+                  </div>
                   <div className="max-h-64 overflow-y-auto divide-y divide-white/5">
                     {!notifications || notifications.length === 0 ? (
                       <p className="px-4 py-6 text-center text-sm text-text-muted">Sin notificaciones</p>
