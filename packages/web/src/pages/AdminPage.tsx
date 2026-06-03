@@ -636,6 +636,16 @@ export default function AdminPage() {
     onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
   });
 
+  const clearPredictions = useMutation({
+    mutationFn: () => adminApi.clearPredictions(),
+    onSuccess: ({ data }: any) => {
+      toast.success(`${data.deleted} predicciones eliminadas, ${data.usersReset} usuarios reseteados`);
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'matches'] });
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
+  });
+
   const TABS: { key: Tab; label: string }[] = [
     { key: 'users',   label: 'Usuarios' },
     { key: 'matches', label: 'Partidos' },
@@ -760,6 +770,24 @@ export default function AdminPage() {
               className="shrink-0 px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm font-semibold transition-colors disabled:opacity-50"
             >
               {resetAllScores.isPending ? 'Limpiando...' : 'Limpiar todo'}
+            </button>
+          </div>
+          <div className="px-4 py-3 flex items-center justify-between gap-4 border-t border-white/5">
+            <div>
+              <p className="text-sm font-semibold">Eliminar predicciones</p>
+              <p className="text-xs text-text-muted mt-0.5">
+                Borra todas las predicciones y resetea puntos. Los partidos quedan intactos. Irreversible.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                if (!window.confirm('¿Eliminar TODAS las predicciones y resetear puntos? Esta acción no se puede deshacer.')) return;
+                clearPredictions.mutate();
+              }}
+              disabled={clearPredictions.isPending}
+              className="shrink-0 px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm font-semibold transition-colors disabled:opacity-50"
+            >
+              {clearPredictions.isPending ? 'Eliminando...' : 'Eliminar predicciones'}
             </button>
           </div>
         </div>

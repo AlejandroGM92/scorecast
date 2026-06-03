@@ -132,6 +132,23 @@ router.post('/reset-all-scores', adminAuth, async (_req, res, next) => {
   }
 });
 
+// DELETE /api/admin/predictions - delete all predictions and reset user points/stats
+router.delete('/predictions', adminAuth, async (_req, res, next) => {
+  try {
+    const [deleted, users] = await prisma.$transaction([
+      prisma.prediction.deleteMany({}),
+      prisma.user.updateMany({
+        data: { totalPoints: 0, exactScores: 0, correctResults: 0, correctGoals: 0 },
+      }),
+    ]);
+    await prisma.match.updateMany({ data: { pointsCalculated: false } });
+    logger.info(`🗑 Predictions cleared: ${deleted.count} deleted, ${users.count} users reset`);
+    res.json({ success: true, deleted: deleted.count, usersReset: users.count });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/admin/calculate-all-points - calculate pending points for all finished matches
 router.post('/calculate-all-points', adminAuth, async (_req, res, next) => {
   try {
