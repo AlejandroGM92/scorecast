@@ -347,7 +347,13 @@ router.post('/test-email', adminAuth, async (req: AuthRequest, res, next) => {
     if (sent) {
       res.json({ success: true, message: `Email de prueba enviado a ${admin.email}` });
     } else {
-      res.status(500).json({ error: 'No se pudo enviar el email. Revisa la configuración SMTP en .env' });
+      const missing = [];
+      if (!process.env.SMTP_USER) missing.push('SMTP_USER');
+      if (!process.env.SMTP_PASS) missing.push('SMTP_PASS');
+      const detail = missing.length
+        ? `Faltan variables de entorno en Render: ${missing.join(', ')}`
+        : 'Error SMTP — revisa SMTP_HOST, SMTP_PORT y que la cuenta permita apps externas';
+      res.status(500).json({ error: detail });
     }
   } catch (error) {
     next(error);
@@ -488,13 +494,13 @@ router.post('/wc-sync-live', adminAuth, async (_req, res, next) => {
 router.post('/simulate-matches', adminAuth, async (_req, res, next) => {
   const TEST_ID_BASE = 99000;
 
-  // Pairs: [homeName pattern, awayName pattern, scoreHome, scoreAway]
+  // Pairs using exact DB names (confirmed via /api/teams)
   const plan = [
-    { h: 'México',        a: 'Marruecos',      sh: 2, sa: 1 },
-    { h: 'Corea',         a: 'Polonia',         sh: 1, sa: 1 },
-    { h: 'Canadá',        a: 'Croacia',         sh: 0, sa: 2 },
-    { h: 'Estados',       a: 'Uruguay',         sh: 3, sa: 0 },
-    { h: 'Qatar',         a: 'Suiza',           sh: 1, sa: 3 },
+    { h: 'México',           a: 'South Africa',       sh: 2, sa: 1 },
+    { h: 'Corea del Sur',    a: 'Czechia',             sh: 1, sa: 1 },
+    { h: 'Canadá',           a: 'Bosnia-Herzegovina',  sh: 0, sa: 2 },
+    { h: 'Estados Unidos',   a: 'Paraguay',            sh: 3, sa: 0 },
+    { h: 'Qatar',            a: 'Suiza',               sh: 1, sa: 3 },
   ];
 
   try {
