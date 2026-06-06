@@ -676,4 +676,64 @@ router.post('/test-notify-all', adminAuth, async (req: AuthRequest, res, next) =
   }
 });
 
+// GET /api/admin/users/export — download CSV with all registered users
+router.get('/users/export', adminAuth, async (_req, res, next) => {
+  try {
+    const users = await prisma.user.findMany({
+      orderBy: { createdAt: 'asc' },
+      select: {
+        username: true,
+        email: true,
+        role: true,
+        isActive: true,
+        oauthProvider: true,
+        googleId: true,
+        whatsappNumber: true,
+        telegramChatId: true,
+        totalPoints: true,
+        exactScores: true,
+        correctResults: true,
+        correctGoals: true,
+        championPrediction: true,
+        createdAt: true,
+        lastLoginAt: true,
+        _count: { select: { predictions: true } },
+      },
+    });
+
+    const escape = (v: unknown) => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+
+    const header = ['Usuario', 'Email', 'Rol', 'Activo', 'Auth', 'WhatsApp', 'Telegram', 'Puntos', 'Exactos', 'Resultados', 'Goles', 'Campeón', 'Predicciones', 'Registro', 'Último login'];
+    const rows = users.map((u) => [
+      u.username,
+      u.email,
+      u.role,
+      u.isActive ? 'Sí' : 'No',
+      u.oauthProvider ? `Google (${u.googleId?.slice(0, 8)}...)` : 'Email',
+      u.whatsappNumber || '',
+      u.telegramChatId ? 'Conectado' : '',
+      u.totalPoints,
+      u.exactScores,
+      u.correctResults,
+      u.correctGoals,
+      u.championPrediction || '',
+      u._count.predictions,
+      u.createdAt.toISOString().slice(0, 10),
+      u.lastLoginAt ? u.lastLoginAt.toISOString().slice(0, 10) : '',
+    ].map(escape).join(','));
+
+    const csv = [header.join(','), ...rows].join('\n');
+    const filename = `scorecast_usuarios_${new Date().toISOString().slice(0, 10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send('﻿' + csv); // BOM for Excel UTF-8
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

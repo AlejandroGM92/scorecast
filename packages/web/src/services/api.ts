@@ -108,6 +108,7 @@ export const adminApi = {
   syncScores: () => api.post('/admin/sync-scores'),
   resetAllScores: () => api.post('/admin/reset-all-scores'),
   clearPredictions: () => api.delete('/admin/predictions'),
+  exportUsers: () => api.get('/admin/users/export', { responseType: 'blob' }),
   wcSync: () => api.post('/admin/wc-sync'),
   wcSyncLive: () => api.post('/admin/wc-sync-live'),
   syncGroups: () => api.post('/admin/sync-groups'),

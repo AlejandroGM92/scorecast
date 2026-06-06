@@ -686,6 +686,27 @@ export default function AdminPage() {
       {/* ── USERS TAB ── */}
       {tab === 'users' && (
         <div className="space-y-3">
+        {/* Export button */}
+        <div className="flex justify-end">
+          <button
+            onClick={async () => {
+              try {
+                const res = await adminApi.exportUsers();
+                const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv;charset=utf-8;' }));
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `scorecast_usuarios_${new Date().toISOString().slice(0, 10)}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch {
+                toast.error('Error al exportar usuarios');
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-text-muted hover:text-white transition-colors"
+          >
+            ⬇️ Descargar CSV
+          </button>
+        </div>
         <div className="glass-card overflow-hidden">
           <div className="px-4 py-3 border-b border-white/5 text-xs text-text-muted grid grid-cols-[1fr_80px_60px_70px_70px] gap-2 font-medium">
             <span>Usuario</span>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
+import { useAuthStore } from '@/store/auth.store';
 
 const STORAGE_KEY = 'scorecast_onboarding_done';
 
@@ -81,6 +82,50 @@ function PreviewCampeon() {
   );
 }
 
+function PreviewTelegram({ username }: { username?: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden text-left">
+      <div className="px-3 py-2 border-b border-white/10 text-xs text-text-muted font-medium">Conectar Telegram</div>
+      <div className="p-3 space-y-2.5">
+        <div className="flex items-start gap-2.5">
+          <span className="bg-primary-500/20 text-primary-400 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
+          <p className="text-xs text-text-muted">Abre Telegram y busca el bot <span className="text-white font-mono">@Scorecast_Not_Bot</span></p>
+        </div>
+        <div className="flex items-start gap-2.5">
+          <span className="bg-primary-500/20 text-primary-400 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
+          <p className="text-xs text-text-muted">Envía el comando:
+            <span className="block mt-1 bg-black/30 rounded px-2 py-1 font-mono text-primary-400 text-xs">/link {username || 'tu_usuario'}</span>
+          </p>
+        </div>
+        <div className="flex items-start gap-2.5">
+          <span className="bg-primary-500/20 text-primary-400 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</span>
+          <p className="text-xs text-text-muted">¡Listo! Recibirás una alerta 1 hora antes de cada partido</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PreviewGrupoWA() {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden text-left">
+      <div className="px-3 py-2 border-b border-white/10 text-xs text-text-muted font-medium">Grupo de participantes</div>
+      <div className="p-3 space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">💬</span>
+          <div>
+            <p className="text-sm font-semibold">WhatsApp SCORECAST</p>
+            <p className="text-xs text-text-muted">Habla con los demás participantes y estate al tanto de novedades</p>
+          </div>
+        </div>
+        <div className="bg-green-600/20 border border-green-500/30 rounded-lg px-3 py-2 text-center">
+          <p className="text-xs text-green-400 font-semibold">El enlace está en tu Perfil → Comunidad</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PreviewTabla() {
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden text-left">
@@ -103,7 +148,7 @@ function PreviewTabla() {
 
 // ── Steps definition ──────────────────────────────────────────────────────────
 
-const STEPS = [
+function buildSteps(username?: string) { return [
   {
     icon: '🏆',
     title: '¡Bienvenido a SCORECAST!',
@@ -150,6 +195,24 @@ const STEPS = [
     isFinal: false,
   },
   {
+    icon: '🔔',
+    title: 'Activa las notificaciones',
+    description: 'Conecta Telegram y recibe un aviso 1 hora antes de cada partido para no olvidar tu predicción.',
+    preview: <PreviewTelegram username={username} />,
+    action: null,
+    actionLabel: null,
+    isFinal: false,
+  },
+  {
+    icon: '💬',
+    title: 'Únete al grupo',
+    description: 'Hay un grupo de WhatsApp con todos los participantes. Lo encuentras en tu Perfil en la sección Comunidad.',
+    preview: <PreviewGrupoWA />,
+    action: '/profile',
+    actionLabel: 'Ir al Perfil',
+    isFinal: false,
+  },
+  {
     icon: '🚀',
     title: '¡Todo listo!',
     description: 'Ya sabes cómo funciona SCORECAST. Ve a predecir tus primeros partidos y empieza a sumar puntos.',
@@ -158,7 +221,7 @@ const STEPS = [
     actionLabel: '¡Empezar a predecir!',
     isFinal: true,
   },
-];
+]; }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
@@ -182,6 +245,8 @@ export function useOnboarding() {
 export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const STEPS = buildSteps(user?.username);
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
 
