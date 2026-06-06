@@ -133,7 +133,15 @@ export default function Navbar() {
             )}
           </div>
 
-          <span className="text-text-muted text-sm hidden md:block px-1">{user?.username}</span>
+          {user?.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt={user.username}
+              className="w-7 h-7 rounded-full object-cover border border-white/20 hidden md:block"
+            />
+          ) : (
+            <span className="text-text-muted text-sm hidden md:block px-1">{user?.username}</span>
+          )}
 
           <button onClick={handleLogout} className="text-text-muted hover:text-danger transition-colors p-2" title="Cerrar sesión">
             <LogOut size={18} />

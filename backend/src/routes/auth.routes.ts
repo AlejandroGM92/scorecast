@@ -128,6 +128,7 @@ router.get('/me', auth, async (req: AuthRequest, res, next) => {
         oauthProvider: true,
         whatsappNumber: true,
         telegramChatId: true,
+        avatarUrl: true,
         createdAt: true,
       },
     });

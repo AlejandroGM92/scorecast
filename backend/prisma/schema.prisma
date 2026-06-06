@@ -50,6 +50,7 @@ model User {
 
   whatsappNumber  String? @db.VarChar(20)
   telegramChatId  String? @db.VarChar(20)
+  avatarUrl       String? @db.VarChar(500)
 
   sessionVersion Int      @default(1)
   lastLoginAt    DateTime?

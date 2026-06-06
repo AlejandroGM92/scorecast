@@ -400,6 +400,7 @@ export default function ProfilePage() {
         exactScores: profile.exactScores,
         correctResults: profile.correctResults,
         correctGoals: profile.correctGoals,
+        avatarUrl: (profile as any).avatarUrl ?? user.avatarUrl ?? null,
       }, token);
     }
   }, [profile]);
@@ -429,8 +430,18 @@ export default function ProfilePage() {
 
       {/* User info */}
       <div className="glass-card p-4 flex items-center gap-4">
-        <div className="w-14 h-14 rounded-full bg-primary-700 flex items-center justify-center text-2xl font-bold shrink-0">
-          {user?.username?.[0]?.toUpperCase()}
+        <div className="shrink-0">
+          {(profile as any)?.avatarUrl ? (
+            <img
+              src={(profile as any).avatarUrl}
+              alt={user?.username}
+              className="w-14 h-14 rounded-full object-cover border-2 border-primary-500/30"
+            />
+          ) : (
+            <div className="w-14 h-14 rounded-full bg-primary-700 flex items-center justify-center text-2xl font-bold">
+              {user?.username?.[0]?.toUpperCase()}
+            </div>
+          )}
         </div>
         <div>
           <div className="font-bold text-lg">{user?.username}</div>

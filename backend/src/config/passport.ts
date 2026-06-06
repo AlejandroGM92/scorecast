@@ -24,17 +24,19 @@ export function configurePassport() {
           const email = profile.emails?.[0]?.value;
           if (!email) return done(new Error('No se pudo obtener el email de Google'));
 
+          const avatarUrl = profile.photos?.[0]?.value ?? null;
+
           // Check if user already exists
           const existingUser = await prisma.user.findFirst({
             where: { OR: [{ googleId: profile.id }, { email }] },
           });
 
           if (existingUser) {
-            await prisma.user.update({
+            const updated = await prisma.user.update({
               where: { id: existingUser.id },
-              data: { lastLoginAt: new Date() },
+              data: { lastLoginAt: new Date(), ...(avatarUrl ? { avatarUrl } : {}) },
             });
-            return done(null, existingUser);
+            return done(null, updated);
           }
 
           // Login-only flow: user doesn't exist → error
@@ -67,6 +69,7 @@ export function configurePassport() {
               oauthProvider: 'google',
               invitationTokenId: token.id,
               lastLoginAt: new Date(),
+              avatarUrl,
             },
           });
 

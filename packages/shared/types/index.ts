@@ -16,6 +16,7 @@ export interface User {
   championPrediction: string | null;
   championOdds: number | null;
   oauthProvider: string | null;
+  avatarUrl: string | null;
   lastLoginAt: string | null;
   createdAt: string;
 }
