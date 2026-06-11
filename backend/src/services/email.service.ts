@@ -87,7 +87,10 @@ export async function sendMatchReminderEmail(params: {
   matchTime: Date;
   hasPrediction: boolean;
 }): Promise<boolean> {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) return false;
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    logger.warn('📧 Email skipped — SMTP_USER or SMTP_PASS not set in environment variables');
+    return false;
+  }
 
   const { to, username, homeTeam, awayTeam, matchTime, hasPrediction } = params;
   const appUrl = process.env.FRONTEND_URL || 'http://localhost:5175';
