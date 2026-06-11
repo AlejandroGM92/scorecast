@@ -33,7 +33,7 @@ class LeaderboardService {
     const championWinner = championConfig?.value ?? null;
 
     const users = await prisma.user.findMany({
-      where: { isActive: true, role: 'PLAYER' },
+      where: { isActive: true },
       select: {
         id: true,
         username: true,
