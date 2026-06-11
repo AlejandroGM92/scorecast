@@ -818,6 +818,27 @@ export default function AdminPage() {
       {/* ── MATCHES TAB ── */}
       {tab === 'matches' && (
         <div className="space-y-3">
+        {/* Agregar partidos faltantes */}
+        <div className="glass-card px-4 py-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold">⚠️ Partidos faltantes detectados</p>
+            <p className="text-xs text-text-muted mt-0.5">Algeria vs Austria · Jordan vs Argentina (28 jun, 02:00 UTC)</p>
+          </div>
+          <button
+            onClick={async () => {
+              try {
+                const res = await adminApi.seedMissingMatches();
+                toast.success(res.data.results.map((r: any) => `${r.match}: ${r.status}`).join(' | '));
+              } catch {
+                toast.error('Error al agregar partidos');
+              }
+            }}
+            className="btn-primary text-xs px-3 py-2 shrink-0"
+          >
+            Agregar
+          </button>
+        </div>
+
         {/* Mundial 2026 sync — ESPN (sin límite de API) */}
         <div className="glass-card px-4 py-3 flex items-center gap-2">
           <span className="text-xs text-text-muted shrink-0">🌍 Mundial 2026:</span>

@@ -737,4 +737,59 @@ router.post('/test-notify-all', adminAuth, async (req: AuthRequest, res, next) =
   }
 });
 
+// POST /api/admin/seed-missing-matches — add group-stage matches missing from initial sync
+router.post('/seed-missing-matches', adminAuth, async (_req, res, next) => {
+  try {
+    const missing = [
+      {
+        apiFootballId: 760484,
+        matchNumber: 760484,
+        homeTeamName: 'Algeria',
+        awayTeamName: 'Austria',
+        dateTime: new Date('2026-06-28T02:00:00Z'),
+        venue: 'GEHA Field at Arrowhead Stadium',
+        city: 'Kansas City',
+      },
+      {
+        apiFootballId: 760483,
+        matchNumber: 760483,
+        homeTeamName: 'Jordan',
+        awayTeamName: 'Argentina',
+        dateTime: new Date('2026-06-28T02:00:00Z'),
+        venue: 'AT&T Stadium',
+        city: 'Arlington',
+      },
+    ];
+
+    const results = [];
+    for (const m of missing) {
+      const existing = await prisma.match.findUnique({ where: { apiFootballId: m.apiFootballId } });
+      if (existing) { results.push({ match: `${m.homeTeamName} vs ${m.awayTeamName}`, status: 'already exists' }); continue; }
+
+      const home = await prisma.team.findFirst({ where: { name: m.homeTeamName } });
+      const away = await prisma.team.findFirst({ where: { name: m.awayTeamName } });
+      if (!home || !away) { results.push({ match: `${m.homeTeamName} vs ${m.awayTeamName}`, status: `team not found: ${!home ? m.homeTeamName : m.awayTeamName}` }); continue; }
+
+      await prisma.match.create({
+        data: {
+          apiFootballId: m.apiFootballId,
+          matchNumber: m.matchNumber,
+          phase: 'GROUP_STAGE',
+          teamHomeId: home.id,
+          teamAwayId: away.id,
+          dateTime: m.dateTime,
+          venue: m.venue,
+          city: m.city,
+          status: 'SCHEDULED',
+        },
+      });
+      results.push({ match: `${m.homeTeamName} vs ${m.awayTeamName}`, status: 'created' });
+    }
+
+    res.json({ success: true, results });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
