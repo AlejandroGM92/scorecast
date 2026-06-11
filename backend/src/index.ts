@@ -23,6 +23,9 @@ import teamsRoutes from './routes/teams.routes';
 const app = express();
 const PORT = process.env.PORT || 3002;
 
+// Trust Render's proxy so express-rate-limit can read real client IPs
+app.set('trust proxy', 1);
+
 // Security
 app.use(helmet());
 app.use(
