@@ -82,6 +82,19 @@ function matchReminderHtml(params: {
 </html>`;
 }
 
+export async function verifySmtp(): Promise<{ ok: boolean; error?: string }> {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    return { ok: false, error: 'SMTP_USER o SMTP_PASS no están configurados en Render' };
+  }
+  try {
+    await transporter.verify();
+    return { ok: true };
+  } catch (err: any) {
+    logger.error('❌ SMTP verify failed:', err.message);
+    return { ok: false, error: err.message || 'Error de conexión SMTP desconocido' };
+  }
+}
+
 export async function sendMatchReminderEmail(params: {
   to: string;
   username: string;

@@ -8,7 +8,7 @@ import pointsService from '../services/points.service';
 import syncService from '../services/sync.service';
 import apiFootballService from '../services/apiFootball.service';
 import { syncWorldCupScores, syncWorldCupLive } from '../services/wcSync.service';
-import { sendMatchReminderEmail } from '../services/email.service';
+import { sendMatchReminderEmail, verifySmtp } from '../services/email.service';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -413,6 +413,12 @@ router.post('/test-email', adminAuth, async (req: AuthRequest, res, next) => {
       return res.status(400).json({ error: 'Admin no tiene email configurado' });
     }
 
+    // Verify SMTP connection first — returns the exact error from nodemailer
+    const verify = await verifySmtp();
+    if (!verify.ok) {
+      return res.status(500).json({ error: `Error SMTP: ${verify.error}` });
+    }
+
     const sent = await sendMatchReminderEmail({
       to: admin.email,
       username: admin.username,
@@ -425,13 +431,7 @@ router.post('/test-email', adminAuth, async (req: AuthRequest, res, next) => {
     if (sent) {
       res.json({ success: true, message: `Email de prueba enviado a ${admin.email}` });
     } else {
-      const missing = [];
-      if (!process.env.SMTP_USER) missing.push('SMTP_USER');
-      if (!process.env.SMTP_PASS) missing.push('SMTP_PASS');
-      const detail = missing.length
-        ? `Faltan variables de entorno en Render: ${missing.join(', ')}`
-        : 'Error SMTP — revisa SMTP_HOST, SMTP_PORT y que la cuenta permita apps externas';
-      res.status(500).json({ error: detail });
+      res.status(500).json({ error: 'El servidor SMTP conectó pero falló al enviar. Revisa los logs de Render.' });
     }
   } catch (error) {
     next(error);
