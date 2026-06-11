@@ -431,7 +431,7 @@ router.post('/test-email', adminAuth, async (req: AuthRequest, res, next) => {
     if (sent) {
       res.json({ success: true, message: `Email de prueba enviado a ${admin.email}` });
     } else {
-      res.status(500).json({ error: 'El servidor SMTP conectó pero falló al enviar. Revisa los logs de Render.' });
+      res.status(500).json({ error: 'Resend conectó pero falló al enviar. Revisa los logs de Render para ver el error exacto.' });
     }
   } catch (error) {
     next(error);
