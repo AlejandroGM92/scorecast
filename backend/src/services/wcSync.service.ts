@@ -140,12 +140,39 @@ export async function syncWorldCupScores(): Promise<WcSyncResult> {
 }
 
 export async function syncWorldCupLive(): Promise<void> {
-  // Use today's fixtures (not just live ones) so matches that just finished
-  // (state='post') are also picked up and their scores/points calculated.
-  const fixtures = await espnService.getTodayFixtures();
+  const now = new Date();
+
+  // Find dates of matches that need syncing: LIVE/HALFTIME or LOCKED past start time
+  const pendingMatches = await prisma.match.findMany({
+    where: {
+      OR: [
+        { status: { in: ['LIVE', 'HALFTIME'] } },
+        { status: 'LOCKED', dateTime: { lte: now } },
+      ],
+    },
+    select: { dateTime: true },
+  });
+
+  // Collect unique dates to fetch from ESPN
+  const datesToFetch = new Set<string>();
+
+  // Always include today and yesterday — catches matches that finished overnight
+  const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
+  datesToFetch.add(fmt(now));
+  datesToFetch.add(fmt(new Date(now.getTime() - 24 * 60 * 60 * 1000)));
+
+  // Add the actual match dates
+  for (const m of pendingMatches) {
+    datesToFetch.add(fmt(m.dateTime));
+  }
+
+  const allFixtures = await Promise.all(
+    [...datesToFetch].map(date => espnService.getFixturesByDateRange(date, date))
+  );
+  const fixtures = allFixtures.flat();
   if (fixtures.length === 0) return;
 
-  logger.info(`🔴 WC live sync: ${fixtures.length} partidos hoy`);
+  logger.info(`🔴 WC live sync: ${fixtures.length} partidos en fechas ${[...datesToFetch].join(', ')}`);
   const teamMap = await buildTeamNameMap();
   await processFixtures(fixtures, teamMap);
 }
