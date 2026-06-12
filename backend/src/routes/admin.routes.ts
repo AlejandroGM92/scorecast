@@ -298,7 +298,7 @@ router.post('/reset-and-recalculate', adminAuth, async (_req, res, next) => {
       data: { pointsCalculated: false },
     });
 
-    // 5. Recalculate directly — bypass calculatePointsForFinishedMatches to see errors inline
+    // 5. Inline calculation with full diagnostic — bypass service layer entirely
     const toProcess = await prisma.match.findMany({
       where: { status: 'FINISHED', pointsCalculated: false, scoreHome: { not: null }, scoreAway: { not: null } },
       include: { predictions: { include: { user: true } }, teamHome: true, teamAway: true },
@@ -307,13 +307,44 @@ router.post('/reset-and-recalculate', adminAuth, async (_req, res, next) => {
 
     const processResults: any[] = [];
     for (const match of toProcess) {
-      try {
-        await pointsService.calculatePointsForFinishedMatches();
-        processResults.push({ match: `${match.teamHome.name} vs ${match.teamAway.name}`, predictions: match.predictions.length, status: 'ok' });
-      } catch (err: any) {
-        processResults.push({ match: `${match.teamHome.name} vs ${match.teamAway.name}`, predictions: match.predictions.length, status: 'error', error: err.message });
-        logger.error(`❌ Error processing ${match.teamHome.name} vs ${match.teamAway.name}:`, err);
+      const scoreHome = match.scoreHome!;
+      const scoreAway = match.scoreAway!;
+      const predResults: any[] = [];
+
+      for (const pred of match.predictions) {
+        const ph = pred.predictedHome;
+        const pa = pred.predictedAway;
+        const exact  = ph === scoreHome && pa === scoreAway ? 3 : 0;
+        const predR  = ph > pa ? 'H' : ph < pa ? 'A' : 'D';
+        const realR  = scoreHome > scoreAway ? 'H' : scoreHome < scoreAway ? 'A' : 'D';
+        const result = predR === realR ? 2 : 0;
+        const goals  = (ph === scoreHome ? 1 : 0) + (pa === scoreAway ? 1 : 0);
+        const total  = exact + result + goals;
+
+        predResults.push({ user: pred.user.username, ph, pa, scoreHome, scoreAway, exact, result, goals, total });
+
+        // Apply points directly
+        await prisma.prediction.update({
+          where: { id: pred.id },
+          data: { pointsEarned: total, pointsExact: exact, pointsResult: result, pointsGoals: goals,
+                  isExactScore: exact > 0, isCorrectResult: result > 0, hasCorrectGoal: goals > 0 },
+        });
+        await prisma.user.update({
+          where: { id: pred.userId },
+          data: { totalPoints: { increment: total }, exactScores: { increment: exact > 0 ? 1 : 0 },
+                  correctResults: { increment: result > 0 ? 1 : 0 }, correctGoals: { increment: goals > 0 ? 1 : 0 } },
+        });
       }
+
+      await prisma.match.update({ where: { id: match.id }, data: { pointsCalculated: true } });
+      logger.info(`✅ ${match.teamHome.name} vs ${match.teamAway.name}: ${predResults.length} preds processed`);
+      processResults.push({
+        match: `${match.teamHome.name} vs ${match.teamAway.name}`,
+        scoreHome, scoreAway,
+        predictions: predResults.length,
+        sample: predResults.slice(0, 5),
+        status: 'ok',
+      });
     }
 
     // 6. Return summary
