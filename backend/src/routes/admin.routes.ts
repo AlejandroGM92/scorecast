@@ -9,6 +9,7 @@ import syncService from '../services/sync.service';
 import apiFootballService from '../services/apiFootball.service';
 import { syncWorldCupScores, syncWorldCupLive } from '../services/wcSync.service';
 import { sendMatchReminderEmail, verifySmtp } from '../services/email.service';
+import { recalculateGroupStandings } from '../services/standings.service';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -707,6 +708,16 @@ router.post('/sync-odds', adminAuth, async (_req, res, next) => {
 
     logger.info(`✅ Odds sincronizadas: ${updated} equipos actualizados`);
     res.json({ success: true, updated });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/admin/recalculate-standings — recompute group table stats from FINISHED matches
+router.post('/recalculate-standings', adminAuth, async (_req, res, next) => {
+  try {
+    await recalculateGroupStandings();
+    res.json({ success: true, message: 'Tabla de grupos actualizada' });
   } catch (error) {
     next(error);
   }

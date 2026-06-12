@@ -121,6 +121,7 @@ export const adminApi = {
   calculatePoints: (matchId: string) => api.post(`/admin/calculate-points/${matchId}`),
   forceRecalculate: (matchId: string) => api.post(`/admin/force-recalculate/${matchId}`),
   debugMatch: (matchId: string) => api.get(`/admin/debug-match/${matchId}`),
+  recalculateStandings: () => api.post('/admin/recalculate-standings'),
   setMatchScore: (id: string, data: Record<string, unknown>) => api.put(`/admin/match/${id}/score`, data),
   config: {
     list: () => api.get('/admin/config'),

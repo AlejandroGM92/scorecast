@@ -679,6 +679,15 @@ export default function AdminPage() {
     onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
   });
 
+  const recalculateStandings = useMutation({
+    mutationFn: () => adminApi.recalculateStandings(),
+    onSuccess: () => {
+      toast.success('✅ Tabla de grupos actualizada');
+      qc.invalidateQueries({ queryKey: ['teams'] });
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
+  });
+
   const TABS: { key: Tab; label: string }[] = [
     { key: 'users',        label: 'Usuarios' },
     { key: 'matches',      label: 'Partidos' },
@@ -916,6 +925,14 @@ export default function AdminPage() {
             </button>
           </div>
           <p className="text-xs text-text-muted">Usa "Reset y recalcular" si los puntos muestran 0 aunque haya marcador.</p>
+          <button
+            onClick={() => recalculateStandings.mutate()}
+            disabled={recalculateStandings.isPending}
+            className="btn-secondary text-xs w-full py-2 flex items-center justify-center gap-1.5"
+          >
+            <RefreshCw size={12} className={recalculateStandings.isPending ? 'animate-spin' : ''} />
+            {recalculateStandings.isPending ? 'Actualizando...' : '📊 Actualizar tabla de grupos'}
+          </button>
         </div>
         <div className="glass-card p-4 space-y-2">
           <p className="text-xs text-text-muted font-semibold uppercase tracking-wide">🧪 Simulación de partidos</p>

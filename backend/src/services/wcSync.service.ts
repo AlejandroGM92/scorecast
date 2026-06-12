@@ -2,6 +2,7 @@ type MatchStatus = 'SCHEDULED' | 'LOCKED' | 'LIVE' | 'HALFTIME' | 'FINISHED' | '
 import { prisma } from '../config/database';
 import espnService, { EspnFixture } from './espnFootball.service';
 import pointsService from './points.service';
+import { recalculateGroupStandings } from './standings.service';
 import { logger } from '../utils/logger';
 
 // ESPN displayName → our team.nameEn for names that differ
@@ -120,10 +121,9 @@ async function processFixtures(fixtures: EspnFixture[], teamMap: Map<string, str
     matchesUpdated++;
   }
 
-  // Always run points calculation — not just when newlyFinished has items.
-  // A match may already be FINISHED in DB (from a prior sync) but still have
-  // pointsCalculated=false if a previous calculation attempt failed or was skipped.
+  // Always run points calculation and standings update after every sync.
   await pointsService.calculatePointsForFinishedMatches();
+  await recalculateGroupStandings();
   const pointsCalculated = newlyFinished.length;
 
   return { matchesUpdated, matchesNotFound, pointsCalculated };
