@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Pencil, Trash2, RefreshCw } from 'lucide-react';
 
-type Tab = 'tokens' | 'users' | 'matches' | 'api' | 'cuenta';
+type Tab = 'tokens' | 'users' | 'matches' | 'predicciones' | 'api' | 'cuenta';
 
 // ─── Edit User Modal ────────────────────────────────────────────────────────
 function EditUserModal({
@@ -170,10 +170,10 @@ function ScoreModal({ match, onClose }: { match: any; onClose: () => void }) {
           <button onClick={() => setScore()} disabled={settingScore} className="btn-primary w-full">
             {settingScore ? 'Guardando...' : 'Guardar marcador'}
           </button>
-          {status === 'FINISHED' && !match.pointsCalculated && (
+          {status === 'FINISHED' && (
             <button onClick={() => calcPoints()} disabled={calcPending} className="btn-secondary w-full flex items-center justify-center gap-2">
               <RefreshCw size={14} />
-              {calcPending ? 'Calculando...' : 'Calcular puntos'}
+              {calcPending ? 'Calculando...' : match.pointsCalculated ? 'Recalcular puntos' : 'Calcular puntos'}
             </button>
           )}
           <button onClick={onClose} className="btn-secondary w-full">Cancelar</button>
@@ -513,13 +513,20 @@ export default function AdminPage() {
   const { data: matches, isLoading: loadingMatches } = useQuery({
     queryKey: ['admin', 'matches'],
     queryFn: () => adminApi.matches.list().then((r) => r.data),
-    enabled: tab === 'matches',
+    enabled: tab === 'matches' || tab === 'predicciones',
   });
 
   const { data: apiUsage } = useQuery({
     queryKey: ['admin', 'api-usage'],
     queryFn: () => adminApi.apiUsage().then((r) => r.data),
     enabled: tab === 'api',
+  });
+
+  const [predMatchId, setPredMatchId] = useState('');
+  const { data: allPredictions, isLoading: loadingPreds } = useQuery({
+    queryKey: ['admin', 'predictions', predMatchId],
+    queryFn: () => adminApi.predictions(predMatchId || undefined).then((r) => r.data),
+    enabled: tab === 'predicciones',
   });
 
   const simulateMatches = useMutation({
@@ -646,12 +653,23 @@ export default function AdminPage() {
     onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
   });
 
+  const calculateAllPoints = useMutation({
+    mutationFn: () => adminApi.calculateAllPoints(),
+    onSuccess: () => {
+      toast.success('Puntos calculados para todos los partidos finalizados');
+      qc.invalidateQueries({ queryKey: ['admin', 'matches'] });
+      qc.invalidateQueries({ queryKey: ['leaderboard'] });
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
+  });
+
   const TABS: { key: Tab; label: string }[] = [
-    { key: 'users',   label: 'Usuarios' },
-    { key: 'matches', label: 'Partidos' },
-    { key: 'tokens',  label: 'Tokens' },
-    { key: 'api',     label: 'API' },
-    { key: 'cuenta',  label: 'Mi Cuenta' },
+    { key: 'users',        label: 'Usuarios' },
+    { key: 'matches',      label: 'Partidos' },
+    { key: 'predicciones', label: 'Predicciones' },
+    { key: 'tokens',       label: 'Tokens' },
+    { key: 'api',          label: 'API' },
+    { key: 'cuenta',       label: 'Mi Cuenta' },
   ];
 
   return (
@@ -859,6 +877,22 @@ export default function AdminPage() {
             {wcSyncLive.isPending ? '...' : 'En vivo'}
           </button>
         </div>
+
+        {/* Calcular puntos manualmente */}
+        <div className="glass-card px-4 py-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold">🎯 Calcular puntos pendientes</p>
+            <p className="text-xs text-text-muted mt-0.5">Fuerza el cálculo para todos los partidos FINISHED sin puntos calculados.</p>
+          </div>
+          <button
+            onClick={() => { if (!window.confirm('¿Calcular puntos para todos los partidos terminados sin procesar?')) return; calculateAllPoints.mutate(); }}
+            disabled={calculateAllPoints.isPending}
+            className="btn-secondary text-xs px-3 py-2 shrink-0 flex items-center gap-1.5"
+          >
+            <RefreshCw size={12} className={calculateAllPoints.isPending ? 'animate-spin' : ''} />
+            {calculateAllPoints.isPending ? 'Calculando...' : 'Calcular todos'}
+          </button>
+        </div>
         <div className="glass-card p-4 space-y-2">
           <p className="text-xs text-text-muted font-semibold uppercase tracking-wide">🧪 Simulación de partidos</p>
           <p className="text-xs text-text-muted">Crea 5 partidos finalizados con predicciones automáticas para verificar puntos y tabla de posiciones.</p>
@@ -998,6 +1032,102 @@ export default function AdminPage() {
       )}
 
       {/* ── TOKENS TAB ── */}
+      {tab === 'predicciones' && (
+        <div className="space-y-4">
+          {/* Header con filtro y export */}
+          <div className="glass-card p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex-1 w-full">
+              <label className="text-xs text-text-muted block mb-1">Filtrar por partido</label>
+              <select
+                value={predMatchId}
+                onChange={(e) => setPredMatchId(e.target.value)}
+                className="input-field w-full bg-[#0f1729] text-white text-sm"
+              >
+                <option value="">Todos los partidos</option>
+                {(matches ?? []).map((m: any) => (
+                  <option key={m.id} value={m.id}>
+                    {m.teamHome.name} vs {m.teamAway.name} — {format(new Date(m.dateTime), 'dd MMM', { locale: es })}
+                    {m.scoreHome != null ? ` (${m.scoreHome}-${m.scoreAway})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  const res = await adminApi.exportPredictions();
+                  const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `predicciones_scorecast_${new Date().toISOString().slice(0, 10)}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch { toast.error('Error al exportar'); }
+              }}
+              className="btn-secondary text-xs px-4 py-2 shrink-0 flex items-center gap-1.5"
+            >
+              ⬇ Descargar CSV
+            </button>
+          </div>
+
+          {/* Tabla de predicciones */}
+          {loadingPreds ? (
+            <div className="text-center text-text-muted py-8">Cargando...</div>
+          ) : !allPredictions?.length ? (
+            <div className="text-center text-text-muted py-8">No hay predicciones{predMatchId ? ' para este partido' : ''}.</div>
+          ) : (
+            <div className="glass-card overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-white/10 text-text-muted">
+                    <th className="text-left p-3">Jugador</th>
+                    <th className="text-left p-3">Partido</th>
+                    <th className="text-center p-3">Predicción</th>
+                    <th className="text-center p-3">Real</th>
+                    <th className="text-center p-3">Pts</th>
+                    <th className="text-center p-3">Detalle</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allPredictions.map((p: any) => (
+                    <tr key={p.id} className="border-b border-white/5 hover:bg-white/5">
+                      <td className="p-3 font-medium">{p.user.username}</td>
+                      <td className="p-3 text-text-muted">
+                        {p.match.teamHome.name} vs {p.match.teamAway.name}
+                      </td>
+                      <td className="p-3 text-center font-mono font-bold">
+                        {p.predictedHome} - {p.predictedAway}
+                      </td>
+                      <td className="p-3 text-center font-mono">
+                        {p.match.scoreHome != null ? `${p.match.scoreHome} - ${p.match.scoreAway}` : '—'}
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className={clsx(
+                          'font-bold',
+                          p.pointsEarned >= 5 ? 'text-yellow-400' :
+                          p.pointsEarned > 0 ? 'text-green-400' : 'text-text-muted'
+                        )}>
+                          {p.pointsEarned}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center text-text-muted">
+                        {p.pointsExact > 0 && <span className="mr-1" title="Marcador exacto">🎯</span>}
+                        {p.pointsResult > 0 && <span className="mr-1" title="Resultado correcto">✅</span>}
+                        {p.pointsGoals > 0 && <span title="Goles acertados">⚽</span>}
+                        {p.pointsEarned === 0 && p.match.scoreHome != null && <span className="text-xs">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="px-3 py-2 text-xs text-text-muted border-t border-white/10">
+                {allPredictions.length} predicciones
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {tab === 'tokens' && (
         <div className="space-y-4">
           <div className="glass-card p-4 space-y-3">

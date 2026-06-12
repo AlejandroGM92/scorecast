@@ -792,4 +792,70 @@ router.post('/seed-missing-matches', adminAuth, async (_req, res, next) => {
   }
 });
 
+// GET /api/admin/predictions?matchId=xxx — all predictions (optionally filtered by match)
+router.get('/predictions', adminAuth, async (req, res, next) => {
+  try {
+    const { matchId } = req.query;
+    const predictions = await prisma.prediction.findMany({
+      where: matchId ? { matchId: String(matchId) } : undefined,
+      include: {
+        user: { select: { id: true, username: true, email: true } },
+        match: {
+          include: {
+            teamHome: { select: { name: true, code: true, flag: true } },
+            teamAway: { select: { name: true, code: true, flag: true } },
+          },
+        },
+      },
+      orderBy: [{ match: { dateTime: 'asc' } }, { pointsEarned: 'desc' }],
+    });
+    res.json(predictions);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/admin/predictions/export — CSV of all predictions
+router.get('/predictions/export', adminAuth, async (_req, res, next) => {
+  try {
+    const predictions = await prisma.prediction.findMany({
+      include: {
+        user: { select: { username: true, email: true } },
+        match: {
+          include: {
+            teamHome: { select: { name: true } },
+            teamAway: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: [{ match: { dateTime: 'asc' } }, { pointsEarned: 'desc' }],
+    });
+
+    const header = ['Partido','Fecha','Jugador','Email','Pred_Local','Pred_Visitante','Goles_Real_Local','Goles_Real_Visitante','Puntos','Exacto','Resultado','Goles'];
+    const rows = predictions.map(p => [
+      `${p.match.teamHome.name} vs ${p.match.teamAway.name}`,
+      new Date(p.match.dateTime).toISOString().slice(0, 10),
+      p.user.username,
+      p.user.email,
+      p.predictedHome,
+      p.predictedAway,
+      p.match.scoreHome ?? '',
+      p.match.scoreAway ?? '',
+      p.pointsEarned,
+      p.pointsExact,
+      p.pointsResult,
+      p.pointsGoals,
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+
+    const bom = '﻿';
+    const csv = bom + [header.join(','), ...rows].join('\r\n');
+    const filename = `predicciones_scorecast_${new Date().toISOString().slice(0, 10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
