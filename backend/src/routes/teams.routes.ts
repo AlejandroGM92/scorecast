@@ -7,7 +7,7 @@ const router = Router();
 router.get('/', async (_req, res, next) => {
   try {
     const teams = await prisma.team.findMany({
-      select: { id: true, code: true, name: true, flag: true, group: true, championOdds: true },
+      select: { id: true, code: true, name: true, flag: true, group: true, championOdds: true, played: true, won: true, drawn: true, lost: true, goalsFor: true, goalsAgainst: true, goalDifference: true, points: true },
       orderBy: [{ group: 'asc' }, { championOdds: 'asc' }],
     });
     res.json(teams);
