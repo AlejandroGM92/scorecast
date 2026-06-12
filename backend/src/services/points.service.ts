@@ -51,54 +51,48 @@ class PointsService {
       `🧮 Calculating: ${match.teamHome.name} ${scoreHome}-${scoreAway} ${match.teamAway.name} (${predictions.length} predictions)`
     );
 
-    // Collect results for notifications (created after the transaction)
     const notificationsToCreate: Array<{ userId: string; points: PointsBreakdown }> = [];
 
-    // Critical transaction: only prediction/user updates + match flag
-    // Notifications are excluded so a notification failure can't abort points calculation
-    await prisma.$transaction(async (tx) => {
-      for (const prediction of predictions) {
-        const points = this.calculatePoints(
-          prediction.predictedHome,
-          prediction.predictedAway,
-          scoreHome!,
-          scoreAway!
-        );
+    // Process predictions individually — no interactive transaction to avoid the 5s timeout
+    // with large prediction counts (50+ predictions = 100+ queries kills the transaction).
+    for (const prediction of predictions) {
+      const points = this.calculatePoints(
+        prediction.predictedHome,
+        prediction.predictedAway,
+        scoreHome!,
+        scoreAway!
+      );
 
-        await tx.prediction.update({
-          where: { id: prediction.id },
-          data: {
-            pointsEarned: points.total,
-            pointsExact: points.exact,
-            pointsResult: points.result,
-            pointsGoals: points.goals,
-            isExactScore: points.exact > 0,
-            isCorrectResult: points.result > 0,
-            hasCorrectGoal: points.goals > 0,
-          },
-        });
-
-        await tx.user.update({
-          where: { id: prediction.userId },
-          data: {
-            totalPoints: { increment: points.total },
-            exactScores: { increment: points.exact > 0 ? 1 : 0 },
-            correctResults: { increment: points.result > 0 ? 1 : 0 },
-            correctGoals: { increment: points.goals > 0 ? 1 : 0 },
-          },
-        });
-
-        if (points.total > 0) {
-          notificationsToCreate.push({ userId: prediction.userId, points });
-        }
-
-        logger.info(`  ✓ ${prediction.user.username}: ${points.total} pts`);
-      }
-
-      await tx.match.update({
-        where: { id: match.id },
-        data: { pointsCalculated: true },
+      await prisma.prediction.update({
+        where: { id: prediction.id },
+        data: {
+          pointsEarned: points.total,
+          pointsExact: points.exact,
+          pointsResult: points.result,
+          pointsGoals: points.goals,
+          isExactScore: points.exact > 0,
+          isCorrectResult: points.result > 0,
+          hasCorrectGoal: points.goals > 0,
+        },
       });
+
+      await prisma.user.update({
+        where: { id: prediction.userId },
+        data: {
+          totalPoints: { increment: points.total },
+          exactScores: { increment: points.exact > 0 ? 1 : 0 },
+          correctResults: { increment: points.result > 0 ? 1 : 0 },
+          correctGoals: { increment: points.goals > 0 ? 1 : 0 },
+        },
+      });
+
+      if (points.total > 0) notificationsToCreate.push({ userId: prediction.userId, points });
+      logger.info(`  ✓ ${prediction.user.username}: ${points.total} pts`);
+    }
+
+    await prisma.match.update({
+      where: { id: match.id },
+      data: { pointsCalculated: true },
     });
 
     // Create notifications outside the transaction — failure here won't undo points
