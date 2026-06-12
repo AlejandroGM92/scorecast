@@ -666,6 +666,19 @@ export default function AdminPage() {
     onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
   });
 
+  const resetAndRecalculate = useMutation({
+    mutationFn: () => adminApi.resetAndRecalculate(),
+    onSuccess: ({ data }: any) => {
+      const top = (data.topScorers ?? []).map((u: any) => `${u.username}: ${u.totalPoints}pts`).join(' · ');
+      toast.success(`✅ Recalculado. Top: ${top || 'sin puntos aún'}`);
+      qc.invalidateQueries({ queryKey: ['admin', 'matches'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+      qc.invalidateQueries({ queryKey: ['leaderboard'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'predictions'] });
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
+  });
+
   const TABS: { key: Tab; label: string }[] = [
     { key: 'users',        label: 'Usuarios' },
     { key: 'matches',      label: 'Partidos' },
@@ -881,20 +894,28 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* Calcular puntos manualmente */}
-        <div className="glass-card px-4 py-3 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold">🎯 Calcular puntos pendientes</p>
-            <p className="text-xs text-text-muted mt-0.5">Fuerza el cálculo para todos los partidos FINISHED sin puntos calculados.</p>
+        {/* Calcular / resetear puntos */}
+        <div className="glass-card px-4 py-3 space-y-2">
+          <p className="text-xs font-semibold">🎯 Puntos</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { if (!window.confirm('¿Calcular puntos para todos los partidos terminados sin procesar?')) return; calculateAllPoints.mutate(); }}
+              disabled={calculateAllPoints.isPending}
+              className="btn-secondary text-xs flex-1 py-2 flex items-center justify-center gap-1.5"
+            >
+              <RefreshCw size={12} className={calculateAllPoints.isPending ? 'animate-spin' : ''} />
+              {calculateAllPoints.isPending ? 'Calculando...' : 'Calcular pendientes'}
+            </button>
+            <button
+              onClick={() => { if (!window.confirm('⚠️ Esto resetea TODOS los puntos de usuarios y predicciones, y los recalcula desde cero. ¿Continuar?')) return; resetAndRecalculate.mutate(); }}
+              disabled={resetAndRecalculate.isPending}
+              className="text-xs flex-1 py-2 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 font-semibold transition-colors flex items-center justify-center gap-1.5"
+            >
+              <RefreshCw size={12} className={resetAndRecalculate.isPending ? 'animate-spin' : ''} />
+              {resetAndRecalculate.isPending ? 'Procesando...' : '🔄 Reset y recalcular todo'}
+            </button>
           </div>
-          <button
-            onClick={() => { if (!window.confirm('¿Calcular puntos para todos los partidos terminados sin procesar?')) return; calculateAllPoints.mutate(); }}
-            disabled={calculateAllPoints.isPending}
-            className="btn-secondary text-xs px-3 py-2 shrink-0 flex items-center gap-1.5"
-          >
-            <RefreshCw size={12} className={calculateAllPoints.isPending ? 'animate-spin' : ''} />
-            {calculateAllPoints.isPending ? 'Calculando...' : 'Calcular todos'}
-          </button>
+          <p className="text-xs text-text-muted">Usa "Reset y recalcular" si los puntos muestran 0 aunque haya marcador.</p>
         </div>
         <div className="glass-card p-4 space-y-2">
           <p className="text-xs text-text-muted font-semibold uppercase tracking-wide">🧪 Simulación de partidos</p>

@@ -113,6 +113,7 @@ export const adminApi = {
   predictions: (matchId?: string) => api.get('/admin/predictions', { params: matchId ? { matchId } : undefined }),
   exportPredictions: () => api.get('/admin/predictions/export', { responseType: 'blob' }),
   calculateAllPoints: () => api.post('/admin/calculate-all-points'),
+  resetAndRecalculate: () => api.post('/admin/reset-and-recalculate'),
   wcSync: () => api.post('/admin/wc-sync'),
   wcSyncLive: () => api.post('/admin/wc-sync-live'),
   syncGroups: () => api.post('/admin/sync-groups'),

@@ -245,6 +245,44 @@ router.post('/calculate-all-points', adminAuth, async (_req, res, next) => {
   }
 });
 
+// POST /api/admin/reset-and-recalculate — reset ALL user/prediction points then recalculate
+// Safe: does NOT touch match status or scores, only points fields
+router.post('/reset-and-recalculate', adminAuth, async (_req, res, next) => {
+  try {
+    // 1. Reset user point stats to 0
+    await prisma.user.updateMany({
+      data: { totalPoints: 0, exactScores: 0, correctResults: 0, correctGoals: 0 },
+    });
+
+    // 2. Reset all prediction point fields to 0
+    await prisma.prediction.updateMany({
+      data: { pointsEarned: 0, pointsExact: 0, pointsResult: 0, pointsGoals: 0, isExactScore: false, isCorrectResult: false, hasCorrectGoal: false },
+    });
+
+    // 3. Mark all FINISHED matches with a score as pending recalculation
+    await prisma.match.updateMany({
+      where: { status: 'FINISHED', scoreHome: { not: null }, scoreAway: { not: null } },
+      data: { pointsCalculated: false },
+    });
+
+    // 4. Recalculate points for all finished matches
+    await pointsService.calculatePointsForFinishedMatches();
+
+    // 5. Return summary
+    const users = await prisma.user.findMany({
+      where: { totalPoints: { gt: 0 } },
+      select: { username: true, totalPoints: true },
+      orderBy: { totalPoints: 'desc' },
+      take: 10,
+    });
+
+    logger.info(`🔄 Reset & recalculate complete. Top scorers: ${users.map(u => `${u.username}:${u.totalPoints}`).join(', ')}`);
+    res.json({ success: true, message: 'Puntos reseteados y recalculados desde cero', topScorers: users });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/admin/sync-scores - manual sync trigger
 router.post('/sync-scores', adminAuth, async (_req, res, next) => {
   try {
