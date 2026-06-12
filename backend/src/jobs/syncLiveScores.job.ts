@@ -7,12 +7,19 @@ export function startLiveScoreUpdates() {
   // Every 2 min — ESPN has no API quota, so no budget guard needed
   cron.schedule('*/2 * * * *', async () => {
     try {
-      const liveCount = await prisma.match.count({
-        where: { status: { in: ['LIVE', 'HALFTIME'] } },
+      // Sync if there are LIVE/HALFTIME matches OR LOCKED matches whose start time has already passed
+      const now = new Date();
+      const activeCount = await prisma.match.count({
+        where: {
+          OR: [
+            { status: { in: ['LIVE', 'HALFTIME'] } },
+            { status: 'LOCKED', dateTime: { lte: now } },
+          ],
+        },
       });
-      if (liveCount === 0) return;
+      if (activeCount === 0) return;
 
-      logger.info(`🔴 Live sync: ${liveCount} partidos en curso`);
+      logger.info(`🔴 Live sync: ${activeCount} partidos activos o por cerrar`);
       await syncWorldCupLive();
     } catch (error) {
       logger.error('❌ Live score update job failed:', error);
