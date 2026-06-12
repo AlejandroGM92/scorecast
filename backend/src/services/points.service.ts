@@ -48,9 +48,14 @@ class PointsService {
     const { scoreHome, scoreAway, predictions } = match;
 
     logger.info(
-      `🧮 Calculating: ${match.teamHome.name} ${scoreHome}-${scoreAway} ${match.teamAway.name}`
+      `🧮 Calculating: ${match.teamHome.name} ${scoreHome}-${scoreAway} ${match.teamAway.name} (${predictions.length} predictions)`
     );
 
+    // Collect results for notifications (created after the transaction)
+    const notificationsToCreate: Array<{ userId: string; points: PointsBreakdown }> = [];
+
+    // Critical transaction: only prediction/user updates + match flag
+    // Notifications are excluded so a notification failure can't abort points calculation
     await prisma.$transaction(async (tx) => {
       for (const prediction of predictions) {
         const points = this.calculatePoints(
@@ -84,15 +89,7 @@ class PointsService {
         });
 
         if (points.total > 0) {
-          await tx.notification.create({
-            data: {
-              userId: prediction.userId,
-              type: 'POINTS_EARNED',
-              title: '¡Puntos ganados!',
-              message: `Ganaste ${points.total} puntos en ${match.teamHome.name} vs ${match.teamAway.name}`,
-              metadata: { matchId: match.id, points: points.total, breakdown: points as unknown as Record<string, number> },
-            },
-          });
+          notificationsToCreate.push({ userId: prediction.userId, points });
         }
 
         logger.info(`  ✓ ${prediction.user.username}: ${points.total} pts`);
@@ -103,6 +100,23 @@ class PointsService {
         data: { pointsCalculated: true },
       });
     });
+
+    // Create notifications outside the transaction — failure here won't undo points
+    for (const { userId, points } of notificationsToCreate) {
+      try {
+        await prisma.notification.create({
+          data: {
+            userId,
+            type: 'POINTS_EARNED',
+            title: '¡Puntos ganados!',
+            message: `Ganaste ${points.total} puntos en ${match.teamHome.name} vs ${match.teamAway.name}`,
+            metadata: { matchId: match.id, points: points.total, breakdown: points as unknown as Record<string, number> },
+          },
+        });
+      } catch (err) {
+        logger.warn(`⚠️ Failed to create POINTS_EARNED notification for user ${userId}:`, err);
+      }
+    }
 
     logger.info(`✅ Match processed: ${predictions.length} predictions updated`);
   }
