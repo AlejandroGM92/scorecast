@@ -246,29 +246,44 @@ router.post('/calculate-all-points', adminAuth, async (_req, res, next) => {
 });
 
 // POST /api/admin/reset-and-recalculate — reset ALL user/prediction points then recalculate
-// Safe: does NOT touch match status or scores, only points fields
+// Safe: does NOT delete predictions or erase scores. Fixes stuck pointsCalculated=true states.
 router.post('/reset-and-recalculate', adminAuth, async (_req, res, next) => {
   try {
-    // 1. Reset user point stats to 0
+    const now = new Date();
+
+    // 1. Promote LOCKED/LIVE/HALFTIME matches that have a score AND are past their start time → FINISHED
+    // (handles cases where sync set the score but status didn't update)
+    const promoted = await prisma.match.updateMany({
+      where: {
+        status: { in: ['LOCKED', 'LIVE', 'HALFTIME'] },
+        dateTime: { lte: now },
+        scoreHome: { not: null },
+        scoreAway: { not: null },
+      },
+      data: { status: 'FINISHED', pointsCalculated: false },
+    });
+    if (promoted.count > 0) logger.info(`🔧 Promoted ${promoted.count} match(es) to FINISHED`);
+
+    // 2. Reset user point stats to 0
     await prisma.user.updateMany({
       data: { totalPoints: 0, exactScores: 0, correctResults: 0, correctGoals: 0 },
     });
 
-    // 2. Reset all prediction point fields to 0
+    // 3. Reset all prediction point fields to 0
     await prisma.prediction.updateMany({
       data: { pointsEarned: 0, pointsExact: 0, pointsResult: 0, pointsGoals: 0, isExactScore: false, isCorrectResult: false, hasCorrectGoal: false },
     });
 
-    // 3. Mark all FINISHED matches with a score as pending recalculation
+    // 4. Mark all FINISHED matches with a score as pending recalculation
     await prisma.match.updateMany({
       where: { status: 'FINISHED', scoreHome: { not: null }, scoreAway: { not: null } },
       data: { pointsCalculated: false },
     });
 
-    // 4. Recalculate points for all finished matches
+    // 5. Recalculate points for all finished matches
     await pointsService.calculatePointsForFinishedMatches();
 
-    // 5. Return summary
+    // 6. Return summary
     const users = await prisma.user.findMany({
       where: { totalPoints: { gt: 0 } },
       select: { username: true, totalPoints: true },
