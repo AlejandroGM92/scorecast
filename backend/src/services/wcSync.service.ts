@@ -120,12 +120,11 @@ async function processFixtures(fixtures: EspnFixture[], teamMap: Map<string, str
     matchesUpdated++;
   }
 
-  let pointsCalculated = 0;
-  if (newlyFinished.length > 0) {
-    logger.info(`  🧮 Calculando puntos para ${newlyFinished.length} partido(s) recién terminados...`);
-    await pointsService.calculatePointsForFinishedMatches();
-    pointsCalculated = newlyFinished.length;
-  }
+  // Always run points calculation — not just when newlyFinished has items.
+  // A match may already be FINISHED in DB (from a prior sync) but still have
+  // pointsCalculated=false if a previous calculation attempt failed or was skipped.
+  await pointsService.calculatePointsForFinishedMatches();
+  const pointsCalculated = newlyFinished.length;
 
   return { matchesUpdated, matchesNotFound, pointsCalculated };
 }
