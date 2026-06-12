@@ -118,6 +118,8 @@ export const adminApi = {
   syncGroups: () => api.post('/admin/sync-groups'),
   syncOdds: () => api.post('/admin/sync-odds'),
   calculatePoints: (matchId: string) => api.post(`/admin/calculate-points/${matchId}`),
+  forceRecalculate: (matchId: string) => api.post(`/admin/force-recalculate/${matchId}`),
+  debugMatch: (matchId: string) => api.get(`/admin/debug-match/${matchId}`),
   setMatchScore: (id: string, data: Record<string, unknown>) => api.put(`/admin/match/${id}/score`, data),
   config: {
     list: () => api.get('/admin/config'),

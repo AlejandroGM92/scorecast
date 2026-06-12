@@ -114,13 +114,16 @@ function ScoreModal({ match, onClose }: { match: any; onClose: () => void }) {
   });
 
   const { mutate: calcPoints, isPending: calcPending } = useMutation({
-    mutationFn: () => adminApi.matches.calculatePoints(match.id),
-    onSuccess: () => {
-      toast.success('Puntos calculados');
+    mutationFn: () => adminApi.forceRecalculate(match.id),
+    onSuccess: (res: any) => {
+      const preds = res.data?.predictions ?? [];
+      const total = preds.reduce((s: number, p: any) => s + p.points, 0);
+      toast.success(`Puntos calculados: ${preds.length} predicciones, ${total} pts totales`);
       qc.invalidateQueries({ queryKey: ['admin', 'matches'] });
+      qc.invalidateQueries({ queryKey: ['leaderboard'] });
       onClose();
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error al calcular puntos'),
   });
 
   return (

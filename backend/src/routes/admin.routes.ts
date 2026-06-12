@@ -100,6 +100,92 @@ router.put('/tokens/:id', adminAuth, async (_req, res, next) => {
   }
 });
 
+// GET /api/admin/debug-match/:matchId — diagnose why points may not be calculated
+router.get('/debug-match/:matchId', adminAuth, async (req, res, next) => {
+  try {
+    const match = await prisma.match.findUnique({
+      where: { id: req.params.matchId },
+      include: {
+        teamHome: { select: { name: true } },
+        teamAway: { select: { name: true } },
+        _count: { select: { predictions: true } },
+      },
+    });
+    if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
+
+    const predictions = await prisma.prediction.findMany({
+      where: { matchId: match.id },
+      select: { id: true, predictedHome: true, predictedAway: true, pointsEarned: true, user: { select: { username: true } } },
+    });
+
+    res.json({
+      match: {
+        id: match.id,
+        name: `${match.teamHome.name} vs ${match.teamAway.name}`,
+        status: match.status,
+        scoreHome: match.scoreHome,
+        scoreAway: match.scoreAway,
+        pointsCalculated: match.pointsCalculated,
+        lastSyncAt: match.lastSyncAt,
+      },
+      predictions: predictions.map(p => ({
+        user: p.user.username,
+        predicted: `${p.predictedHome}-${p.predictedAway}`,
+        pointsEarned: p.pointsEarned,
+      })),
+      totalPredictions: predictions.length,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/admin/force-recalculate/:matchId — force recalculate ignoring pointsCalculated flag
+router.post('/force-recalculate/:matchId', adminAuth, async (req, res, next) => {
+  try {
+    const match = await prisma.match.findUnique({
+      where: { id: req.params.matchId },
+      include: { predictions: true, teamHome: true, teamAway: true },
+    });
+    if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
+    if (match.status !== 'FINISHED') return res.status(400).json({ error: `Estado actual: ${match.status}. Debe ser FINISHED.` });
+    if (match.scoreHome == null) return res.status(400).json({ error: 'El partido no tiene marcador asignado' });
+
+    // Decrement previous points if already calculated
+    if (match.pointsCalculated) {
+      for (const pred of match.predictions) {
+        await prisma.user.update({
+          where: { id: pred.userId },
+          data: {
+            totalPoints: { decrement: pred.pointsEarned },
+            exactScores: { decrement: pred.isExactScore ? 1 : 0 },
+            correctResults: { decrement: pred.isCorrectResult ? 1 : 0 },
+            correctGoals: { decrement: pred.hasCorrectGoal ? 1 : 0 },
+          },
+        });
+      }
+    }
+
+    // Reset match and prediction stats
+    await prisma.match.update({ where: { id: match.id }, data: { pointsCalculated: false } });
+    await prisma.prediction.updateMany({
+      where: { matchId: match.id },
+      data: { pointsEarned: 0, pointsExact: 0, pointsResult: 0, pointsGoals: 0, isExactScore: false, isCorrectResult: false, hasCorrectGoal: false },
+    });
+
+    // Now calculate
+    await pointsService.calculatePointsForFinishedMatches();
+
+    const updated = await prisma.prediction.findMany({
+      where: { matchId: match.id },
+      select: { pointsEarned: true, user: { select: { username: true } } },
+    });
+    res.json({ success: true, predictions: updated.map(p => ({ user: p.user.username, points: p.pointsEarned })) });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/admin/calculate-points/:matchId - manual points recalculation
 router.post('/calculate-points/:matchId', adminAuth, async (req, res, next) => {
   try {
