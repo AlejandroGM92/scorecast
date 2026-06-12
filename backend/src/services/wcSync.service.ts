@@ -138,10 +138,12 @@ export async function syncWorldCupScores(): Promise<WcSyncResult> {
 }
 
 export async function syncWorldCupLive(): Promise<void> {
-  const fixtures = await espnService.getLiveFixtures();
+  // Use today's fixtures (not just live ones) so matches that just finished
+  // (state='post') are also picked up and their scores/points calculated.
+  const fixtures = await espnService.getTodayFixtures();
   if (fixtures.length === 0) return;
 
-  logger.info(`🔴 WC live sync: ${fixtures.length} partidos en vivo`);
+  logger.info(`🔴 WC live sync: ${fixtures.length} partidos hoy`);
   const teamMap = await buildTeamNameMap();
   await processFixtures(fixtures, teamMap);
 }
