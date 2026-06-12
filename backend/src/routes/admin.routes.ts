@@ -253,9 +253,27 @@ router.post('/reset-and-recalculate', adminAuth, async (_req, res, next) => {
 
     // 1. Promote LOCKED/LIVE/HALFTIME matches that have a score AND are past their start time → FINISHED
     // (handles cases where sync set the score but status didn't update)
+    // DIAGNOSTIC: find ALL matches that have a score, regardless of status
+    const matchesWithScore = await prisma.match.findMany({
+      where: { scoreHome: { not: null } },
+      select: {
+        id: true, status: true, scoreHome: true, scoreAway: true,
+        pointsCalculated: true, dateTime: true,
+        teamHome: { select: { name: true } },
+        teamAway: { select: { name: true } },
+        _count: { select: { predictions: true } },
+      },
+    });
+    logger.info(`🔍 Matches with score: ${JSON.stringify(matchesWithScore.map(m => ({
+      match: `${m.teamHome.name} vs ${m.teamAway.name}`,
+      status: m.status, score: `${m.scoreHome}-${m.scoreAway}`,
+      pointsCalculated: m.pointsCalculated, predictions: m._count.predictions,
+    })))}`);
+
+    // 1. Promote ANY past match with a score that isn't FINISHED yet
     const promoted = await prisma.match.updateMany({
       where: {
-        status: { in: ['LOCKED', 'LIVE', 'HALFTIME'] },
+        status: { notIn: ['FINISHED', 'CANCELLED'] },
         dateTime: { lte: now },
         scoreHome: { not: null },
         scoreAway: { not: null },
@@ -280,8 +298,23 @@ router.post('/reset-and-recalculate', adminAuth, async (_req, res, next) => {
       data: { pointsCalculated: false },
     });
 
-    // 5. Recalculate points for all finished matches
-    await pointsService.calculatePointsForFinishedMatches();
+    // 5. Recalculate directly — bypass calculatePointsForFinishedMatches to see errors inline
+    const toProcess = await prisma.match.findMany({
+      where: { status: 'FINISHED', pointsCalculated: false, scoreHome: { not: null }, scoreAway: { not: null } },
+      include: { predictions: { include: { user: true } }, teamHome: true, teamAway: true },
+    });
+    logger.info(`🎯 Matches to process: ${toProcess.length}`);
+
+    const processResults: any[] = [];
+    for (const match of toProcess) {
+      try {
+        await pointsService.calculatePointsForFinishedMatches();
+        processResults.push({ match: `${match.teamHome.name} vs ${match.teamAway.name}`, predictions: match.predictions.length, status: 'ok' });
+      } catch (err: any) {
+        processResults.push({ match: `${match.teamHome.name} vs ${match.teamAway.name}`, predictions: match.predictions.length, status: 'error', error: err.message });
+        logger.error(`❌ Error processing ${match.teamHome.name} vs ${match.teamAway.name}:`, err);
+      }
+    }
 
     // 6. Return summary
     const users = await prisma.user.findMany({
@@ -291,8 +324,19 @@ router.post('/reset-and-recalculate', adminAuth, async (_req, res, next) => {
       take: 10,
     });
 
-    logger.info(`🔄 Reset & recalculate complete. Top scorers: ${users.map(u => `${u.username}:${u.totalPoints}`).join(', ')}`);
-    res.json({ success: true, message: 'Puntos reseteados y recalculados desde cero', topScorers: users });
+    res.json({
+      success: true,
+      diagnostic: {
+        matchesWithScore: matchesWithScore.map(m => ({
+          match: `${m.teamHome.name} vs ${m.teamAway.name}`,
+          status: m.status, score: `${m.scoreHome}-${m.scoreAway}`,
+          pointsCalculated: m.pointsCalculated, predictions: m._count.predictions,
+        })),
+        promoted: promoted.count,
+        processResults,
+      },
+      topScorers: users,
+    });
   } catch (error) {
     next(error);
   }
