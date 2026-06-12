@@ -13,6 +13,11 @@ const ESPN_NAME_ALIAS: Record<string, string> = {
   'USA': 'United States',
 };
 
+// Strip accents and lowercase for fuzzy matching (Mexico ↔ México, etc.)
+function normalize(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
 function mapStatus(espnStatus: string): MatchStatus {
   switch (espnStatus) {
     case 'STATUS_IN_PROGRESS': return 'LIVE';
@@ -36,10 +41,12 @@ export interface WcSyncResult {
 }
 
 async function buildTeamNameMap(): Promise<Map<string, string>> {
-  const teams = await prisma.team.findMany({ select: { id: true, nameEn: true, code: true } });
+  const teams = await prisma.team.findMany({ select: { id: true, name: true, nameEn: true, code: true } });
   const map = new Map<string, string>();
   for (const t of teams) {
-    map.set(t.nameEn.toLowerCase(), t.id);
+    // Normalize both Spanish and English names to catch accent mismatches (México → mexico)
+    if (t.nameEn) map.set(normalize(t.nameEn), t.id);
+    map.set(normalize(t.name), t.id);
     map.set(t.code.toLowerCase(), t.id);
   }
   return map;
@@ -58,8 +65,8 @@ async function processFixtures(fixtures: EspnFixture[], teamMap: Map<string, str
     const homeNameEn = resolveTeamName(home.team.displayName);
     const awayNameEn = resolveTeamName(away.team.displayName);
 
-    const homeId = teamMap.get(homeNameEn.toLowerCase());
-    const awayId = teamMap.get(awayNameEn.toLowerCase());
+    const homeId = teamMap.get(normalize(homeNameEn));
+    const awayId = teamMap.get(normalize(awayNameEn));
 
     if (!homeId || !awayId) {
       logger.warn(`  ⚠ Team not in DB: ${homeNameEn} | ${awayNameEn}`);
