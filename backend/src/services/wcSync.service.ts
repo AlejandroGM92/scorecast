@@ -22,7 +22,10 @@ function mapStatus(espnStatus: string): MatchStatus {
   switch (espnStatus) {
     case 'STATUS_IN_PROGRESS': return 'LIVE';
     case 'STATUS_HALFTIME':    return 'HALFTIME';
-    case 'STATUS_FINAL':       return 'FINISHED';
+    case 'STATUS_FINAL':
+    case 'STATUS_FULL_TIME':
+    case 'STATUS_EXTRA_TIME':
+    case 'STATUS_PENALTY':     return 'FINISHED';
     case 'STATUS_POSTPONED':   return 'SCHEDULED';
     case 'STATUS_CANCELED':
     case 'STATUS_CANCELLED':   return 'CANCELLED';
