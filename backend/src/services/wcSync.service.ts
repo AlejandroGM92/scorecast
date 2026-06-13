@@ -61,6 +61,14 @@ async function processFixtures(fixtures: EspnFixture[], teamMap: Map<string, str
   let matchesNotFound = 0;
   const newlyFinished: string[] = [];
 
+  // Log every fixture ESPN returned so we can diagnose missing matches
+  logger.info(`📋 ESPN fixtures recibidos (${fixtures.length}):`);
+  for (const f of fixtures) {
+    const h = f.competitors.find(c => c.homeAway === 'home');
+    const a = f.competitors.find(c => c.homeAway === 'away');
+    logger.info(`  → [${f.id}] ${h?.team.displayName ?? '?'} ${h?.score ?? '-'} : ${a?.score ?? '-'} ${a?.team.displayName ?? '?'} | ${f.status.type.name} | ${f.date.slice(0, 10)}`);
+  }
+
   for (const f of fixtures) {
     const home = f.competitors.find(c => c.homeAway === 'home');
     const away = f.competitors.find(c => c.homeAway === 'away');
@@ -73,7 +81,7 @@ async function processFixtures(fixtures: EspnFixture[], teamMap: Map<string, str
     const awayId = teamMap.get(normalize(awayNameEn));
 
     if (!homeId || !awayId) {
-      logger.warn(`  ⚠ Team not in DB: ${homeNameEn} | ${awayNameEn}`);
+      logger.warn(`  ⚠ Equipo no encontrado en DB: "${homeNameEn}" (${homeId ? '✓' : '✗'}) | "${awayNameEn}" (${awayId ? '✓' : '✗'})`);
       matchesNotFound++;
       continue;
     }
@@ -92,7 +100,7 @@ async function processFixtures(fixtures: EspnFixture[], teamMap: Map<string, str
     });
 
     if (!match) {
-      logger.warn(`  ⚠ Match not found in DB: ${homeNameEn} vs ${awayNameEn} on ${fixtureDate.toISOString().slice(0, 10)}`);
+      logger.warn(`  ⚠ Partido no encontrado en DB: ${homeNameEn} vs ${awayNameEn} el ${fixtureDate.toISOString().slice(0, 10)} (espnId=${espnId})`);
       matchesNotFound++;
       continue;
     }
@@ -107,7 +115,7 @@ async function processFixtures(fixtures: EspnFixture[], teamMap: Map<string, str
     await prisma.match.update({
       where: { id: match.id },
       data: {
-        apiFootballId: espnId,          // store ESPN ID for fast future lookups
+        apiFootballId: espnId,
         status,
         scoreHome: isActive ? scoreHome : undefined,
         scoreAway: isActive ? scoreAway : undefined,
@@ -116,6 +124,8 @@ async function processFixtures(fixtures: EspnFixture[], teamMap: Map<string, str
         ...(status === 'FINISHED' && !wasFinished ? { pointsCalculated: false } : {}),
       },
     });
+
+    logger.info(`  ✓ ${homeNameEn} ${scoreHome ?? '-'}-${scoreAway ?? '-'} ${awayNameEn} → ${status}`);
 
     if (status === 'FINISHED' && !wasFinished) newlyFinished.push(match.id);
     matchesUpdated++;
