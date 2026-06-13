@@ -15,10 +15,12 @@ export function PredictionInput({ match, initialHome, initialAway }: PredictionI
   const [away, setAway] = useState(initialAway ?? 0);
   const queryClient = useQueryClient();
 
-  const { mutate, isPending } = useMutation({
+  const hasPrediction = initialHome !== undefined && initialAway !== undefined;
+
+  const { mutate, isPending, isSuccess } = useMutation({
     mutationFn: () => predictionsApi.create(match.id, home, away),
     onSuccess: () => {
-      toast.success('¡Predicción guardada!');
+      toast.success(hasPrediction ? '¡Predicción actualizada!' : '¡Predicción guardada!');
       queryClient.invalidateQueries({ queryKey: ['matches'] });
       queryClient.invalidateQueries({ queryKey: ['predictions', 'my'] });
     },
@@ -27,19 +29,43 @@ export function PredictionInput({ match, initialHome, initialAway }: PredictionI
     },
   });
 
-  const locked = ['LOCKED', 'LIVE', 'HALFTIME', 'FINISHED'].includes(match.status);
+  const locked = ['LOCKED', 'LIVE', 'HALFTIME', 'FINISHED', 'CANCELLED'].includes(match.status);
 
   if (locked) {
+    const message =
+      match.status === 'FINISHED'  ? '🏁 Partido finalizado' :
+      match.status === 'CANCELLED' ? '❌ Partido cancelado'  :
+                                     '🔒 Predicciones cerradas';
     return (
-      <div className="glass-card p-4 text-center text-text-muted text-sm">
-        {match.status === 'FINISHED' ? '🏁 Partido finalizado' : '🔒 Predicciones cerradas'}
+      <div className="glass-card p-4 space-y-3">
+        <p className="text-center text-text-muted text-sm">{message}</p>
+        {hasPrediction && (
+          <div className="flex items-center justify-center gap-6 pt-1">
+            <div className="flex flex-col items-center gap-1">
+              <img src={match.teamHome.flag} alt={match.teamHome.code} className="w-8 h-8 object-cover rounded" />
+              <span className="text-2xl font-bold">{initialHome}</span>
+              <span className="text-xs text-text-muted">{match.teamHome.code}</span>
+            </div>
+            <span className="text-lg text-text-muted pb-4">:</span>
+            <div className="flex flex-col items-center gap-1">
+              <img src={match.teamAway.flag} alt={match.teamAway.code} className="w-8 h-8 object-cover rounded" />
+              <span className="text-2xl font-bold">{initialAway}</span>
+              <span className="text-xs text-text-muted">{match.teamAway.code}</span>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
     <div className="glass-card p-4">
-      <h3 className="text-sm font-semibold text-text-muted mb-4 text-center">Tu predicción</h3>
+      <div className="flex items-center justify-center gap-2 mb-4">
+        <h3 className="text-sm font-semibold text-text-muted text-center">Tu predicción</h3>
+        {hasPrediction && !isSuccess && (
+          <span className="text-xs bg-success/20 text-success px-2 py-0.5 rounded-full">✓ Guardada</span>
+        )}
+      </div>
 
       <div className="flex items-center justify-center gap-4">
         {/* Home score */}
@@ -90,9 +116,9 @@ export function PredictionInput({ match, initialHome, initialAway }: PredictionI
       <button
         onClick={() => mutate()}
         disabled={isPending}
-        className="btn-primary w-full mt-4"
+        className={hasPrediction ? 'btn-secondary w-full mt-4' : 'btn-primary w-full mt-4'}
       >
-        {isPending ? 'Guardando...' : 'Guardar predicción'}
+        {isPending ? 'Guardando...' : hasPrediction ? '✏️ Actualizar predicción' : 'Guardar predicción'}
       </button>
     </div>
   );
