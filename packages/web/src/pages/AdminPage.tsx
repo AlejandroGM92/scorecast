@@ -100,7 +100,9 @@ function EditUserModal({
 function ScoreModal({ match, onClose }: { match: any; onClose: () => void }) {
   const [home, setHome] = useState(match.scoreHome ?? 0);
   const [away, setAway] = useState(match.scoreAway ?? 0);
-  const [status, setStatus] = useState(match.status);
+  // Default to FINISHED when match is past start time — avoids admin forgetting to change status
+  const defaultStatus = ['LOCKED', 'LIVE', 'HALFTIME'].includes(match.status) ? 'FINISHED' : match.status;
+  const [status, setStatus] = useState(defaultStatus);
   const qc = useQueryClient();
 
   const { mutate: setScore, isPending: settingScore } = useMutation({
