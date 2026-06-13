@@ -49,13 +49,14 @@ export default function MatchDetailPage() {
     queryFn: () => matchesApi.detail(id!).then((r) => r.data),
     refetchInterval: (query) => {
       const data = query.state.data as Match | undefined;
-      return data?.status === 'LIVE' || data?.status === 'HALFTIME' ? 30_000 : false;
+      return data?.status === 'LIVE' || data?.status === 'HALFTIME' ? 15_000 : false;
     },
   });
 
   const isLive     = match?.status === 'LIVE' || match?.status === 'HALFTIME';
   const isFinished = match?.status === 'FINISHED';
-  const showSummary = isLive || isFinished;
+  const hasScore   = match?.scoreHome !== null && match?.scoreHome !== undefined;
+  const showSummary = isLive || isFinished || hasScore;
 
   const { data: allPredictions } = useQuery({
     queryKey: ['predictions', 'match', id],
@@ -67,7 +68,8 @@ export default function MatchDetailPage() {
     queryKey: ['match-summary', id],
     queryFn: () => matchesApi.summary(id!).then((r) => r.data),
     enabled: showSummary,
-    refetchInterval: isLive ? 30_000 : false,
+    refetchInterval: isLive ? 15_000 : false,
+    retry: 2,
   });
 
   if (isLoading) {
@@ -165,6 +167,10 @@ export default function MatchDetailPage() {
       {showSummary && (
         summaryLoading ? (
           <div className="glass-card h-24 animate-pulse" />
+        ) : !summary?.available && isLive ? (
+          <div className="glass-card p-4 text-center text-text-muted text-sm">
+            📊 Estadísticas cargando...
+          </div>
         ) : summary?.available ? (
           <>
             {/* Goalscorers */}

@@ -181,6 +181,9 @@ router.get('/:id/summary', async (req, res, next) => {
     if (match.status === 'SCHEDULED' || match.status === 'LOCKED') {
       return res.json({ goals: [], stats: [], available: false });
     }
+    if (!match.apiFootballId) {
+      return res.json({ goals: [], stats: [], available: false });
+    }
 
     const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event=${match.apiFootballId}`;
     const { data } = await axios.get(url, { timeout: 8_000 });
