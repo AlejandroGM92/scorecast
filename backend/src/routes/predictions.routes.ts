@@ -26,6 +26,12 @@ router.post('/', auth, predictionLimiter, async (req: AuthRequest, res, next) =>
       return res.status(400).json({ error: 'Las predicciones están cerradas para este partido' });
     }
 
+    const deadlineMinutes = parseInt(process.env.PREDICTION_DEADLINE_MINUTES || '20');
+    const minutesUntilMatch = (match.dateTime.getTime() - Date.now()) / 60_000;
+    if (minutesUntilMatch <= deadlineMinutes) {
+      return res.status(400).json({ error: 'Las predicciones están cerradas para este partido' });
+    }
+
     const prediction = await prisma.prediction.upsert({
       where: { userId_matchId: { userId, matchId } },
       update: { predictedHome, predictedAway },

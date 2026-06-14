@@ -17,6 +17,10 @@ export function PredictionInput({ match, initialHome, initialAway }: PredictionI
 
   const hasPrediction = initialHome !== undefined && initialAway !== undefined;
 
+  const DEADLINE_MINUTES = 20;
+  const minutesUntilMatch = (new Date(match.dateTime).getTime() - Date.now()) / 60_000;
+  const pastDeadline = minutesUntilMatch <= DEADLINE_MINUTES;
+
   const { mutate, isPending, isSuccess } = useMutation({
     mutationFn: () => predictionsApi.create(match.id, home, away),
     onSuccess: () => {
@@ -29,7 +33,7 @@ export function PredictionInput({ match, initialHome, initialAway }: PredictionI
     },
   });
 
-  const locked = ['LOCKED', 'LIVE', 'HALFTIME', 'FINISHED', 'CANCELLED'].includes(match.status);
+  const locked = pastDeadline || ['LOCKED', 'LIVE', 'HALFTIME', 'FINISHED', 'CANCELLED'].includes(match.status);
 
   if (locked) {
     const message =
