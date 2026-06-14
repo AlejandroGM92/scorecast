@@ -122,6 +122,8 @@ export const adminApi = {
   forceRecalculate: (matchId: string) => api.post(`/admin/force-recalculate/${matchId}`),
   debugMatch: (matchId: string) => api.get(`/admin/debug-match/${matchId}`),
   recalculateStandings: () => api.post('/admin/recalculate-standings'),
+  suspiciousPredictions: () => api.get('/admin/suspicious-predictions'),
+  deletePrediction: (id: string) => api.delete(`/admin/predictions/${id}`),
   setMatchScore: (id: string, data: Record<string, unknown>) => api.put(`/admin/match/${id}/score`, data),
   config: {
     list: () => api.get('/admin/config'),

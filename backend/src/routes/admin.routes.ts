@@ -1034,7 +1034,67 @@ router.get('/predictions', adminAuth, async (req, res, next) => {
       },
       orderBy: [{ match: { dateTime: 'asc' } }, { pointsEarned: 'desc' }],
     });
-    res.json(predictions);
+
+    // Mark predictions modified after match start time
+    const enriched = predictions.map(p => ({
+      ...p,
+      modifiedAfterStart: p.updatedAt > p.match.dateTime,
+    }));
+
+    res.json(enriched);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/admin/suspicious-predictions — predictions updated after match started
+router.get('/suspicious-predictions', adminAuth, async (_req, res, next) => {
+  try {
+    const predictions = await prisma.prediction.findMany({
+      include: {
+        user: { select: { id: true, username: true, email: true } },
+        match: {
+          include: {
+            teamHome: { select: { name: true, code: true } },
+            teamAway: { select: { name: true, code: true } },
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const suspicious = predictions.filter(p => p.updatedAt > p.match.dateTime);
+    res.json(suspicious);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/admin/predictions/:id — nullify a single prediction (reset to 0-0, no points)
+router.delete('/predictions/:id', adminAuth, async (req, res, next) => {
+  try {
+    const prediction = await prisma.prediction.findUnique({
+      where: { id: req.params.id },
+      include: { user: true },
+    });
+    if (!prediction) return res.status(404).json({ error: 'Predicción no encontrada' });
+
+    // Reverse any points already earned
+    if (prediction.pointsEarned > 0) {
+      await prisma.user.update({
+        where: { id: prediction.userId },
+        data: {
+          totalPoints: { decrement: prediction.pointsEarned },
+          exactScores: { decrement: prediction.isExactScore ? 1 : 0 },
+          correctResults: { decrement: prediction.isCorrectResult ? 1 : 0 },
+          correctGoals: { decrement: prediction.hasCorrectGoal ? 1 : 0 },
+        },
+      });
+    }
+
+    await prisma.prediction.delete({ where: { id: req.params.id } });
+    logger.info(`🚫 Predicción anulada: ${prediction.user.username} (matchId=${prediction.matchId})`);
+    res.json({ success: true, message: `Predicción de ${prediction.user.username} anulada` });
   } catch (error) {
     next(error);
   }

@@ -534,6 +534,23 @@ export default function AdminPage() {
     enabled: tab === 'predicciones',
   });
 
+  const { data: suspiciousPreds } = useQuery({
+    queryKey: ['admin', 'suspicious-predictions'],
+    queryFn: () => adminApi.suspiciousPredictions().then((r) => r.data),
+    enabled: tab === 'predicciones',
+  });
+
+  const deletePrediction = useMutation({
+    mutationFn: (id: string) => adminApi.deletePrediction(id),
+    onSuccess: (res: any) => {
+      toast.success(res.data?.message || 'Predicción anulada');
+      qc.invalidateQueries({ queryKey: ['admin', 'predictions'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'suspicious-predictions'] });
+      qc.invalidateQueries({ queryKey: ['leaderboard'] });
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
+  });
+
   const simulateMatches = useMutation({
     mutationFn: () => adminApi.simulateMatches(),
     onSuccess: ({ data }: any) => {
@@ -1077,6 +1094,41 @@ export default function AdminPage() {
       {/* ── TOKENS TAB ── */}
       {tab === 'predicciones' && (
         <div className="space-y-4">
+
+          {/* ── Predicciones sospechosas ── */}
+          {suspiciousPreds && suspiciousPreds.length > 0 && (
+            <div className="glass-card overflow-hidden border border-orange-500/30">
+              <div className="px-4 py-3 bg-orange-500/10 border-b border-orange-500/20 flex items-center gap-2">
+                <span className="text-orange-400 font-semibold text-sm">⚠️ Predicciones modificadas después de iniciar el partido ({suspiciousPreds.length})</span>
+              </div>
+              <div className="divide-y divide-white/5">
+                {suspiciousPreds.map((p: any) => (
+                  <div key={p.id} className="flex items-center justify-between px-4 py-3 text-sm gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-orange-300">{p.user.username}</p>
+                      <p className="text-xs text-text-muted truncate">{p.match.teamHome.name} vs {p.match.teamAway.name}</p>
+                      <p className="text-xs text-text-muted">
+                        Predicción: <span className="text-white font-bold">{p.predictedHome}-{p.predictedAway}</span>
+                        {' · '}Modificada: {format(new Date(p.updatedAt), "dd MMM HH:mm", { locale: es })}
+                        {' · '}Partido: {format(new Date(p.match.dateTime), "dd MMM HH:mm", { locale: es })}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!window.confirm(`¿Anular predicción de ${p.user.username}? Se revertirán sus puntos.`)) return;
+                        deletePrediction.mutate(p.id);
+                      }}
+                      disabled={deletePrediction.isPending}
+                      className="shrink-0 px-3 py-1.5 rounded-lg bg-danger/20 hover:bg-danger/30 text-danger text-xs font-semibold transition-colors"
+                    >
+                      Anular
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Header con filtro y export */}
           <div className="glass-card p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <div className="flex-1 w-full">
