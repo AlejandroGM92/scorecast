@@ -90,18 +90,22 @@ router.get('/my', auth, async (req: AuthRequest, res, next) => {
   }
 });
 
-// GET /api/predictions/match/:matchId - all predictions for a match (after it finishes)
+// GET /api/predictions/match/:matchId - all predictions once match is in progress or finished
 router.get('/match/:matchId', auth, async (req: AuthRequest, res, next) => {
   try {
     const match = await prisma.match.findUnique({
       where: { id: req.params.matchId },
-      select: { status: true, pointsCalculated: true },
+      select: { status: true, pointsCalculated: true, scoreHome: true, dateTime: true },
     });
 
     if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
 
-    if (match.status !== 'FINISHED') {
-      return res.status(400).json({ error: 'Solo visible después de que termine el partido' });
+    const isVisible = ['LIVE', 'HALFTIME', 'FINISHED'].includes(match.status)
+      || match.scoreHome !== null
+      || match.dateTime <= new Date();
+
+    if (!isVisible) {
+      return res.status(400).json({ error: 'Las predicciones se revelan cuando el partido comienza' });
     }
 
     const predictions = await prisma.prediction.findMany({
