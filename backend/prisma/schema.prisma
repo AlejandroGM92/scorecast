@@ -223,8 +223,9 @@ model Prediction {
   isCorrectResult Boolean @default(false)
   hasCorrectGoal  Boolean @default(false)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastEditedAt  DateTime? // set ONLY when user changes predictedHome/Away after creation
 
   @@unique([userId, matchId])
   @@index([userId])

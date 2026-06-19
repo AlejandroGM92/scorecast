@@ -32,9 +32,23 @@ router.post('/', auth, predictionLimiter, async (req: AuthRequest, res, next) =>
       return res.status(400).json({ error: 'Las predicciones están cerradas para este partido' });
     }
 
+    // Check if this is an edit (prediction already exists with different values)
+    const existing = await prisma.prediction.findUnique({
+      where: { userId_matchId: { userId, matchId } },
+    });
+    const isEdit = existing !== null;
+    const valuesChanged = isEdit && (
+      existing.predictedHome !== predictedHome || existing.predictedAway !== predictedAway
+    );
+
     const prediction = await prisma.prediction.upsert({
       where: { userId_matchId: { userId, matchId } },
-      update: { predictedHome, predictedAway },
+      update: {
+        predictedHome,
+        predictedAway,
+        // Only set lastEditedAt when values actually change after the initial save
+        ...(valuesChanged ? { lastEditedAt: new Date() } : {}),
+      },
       create: { userId, matchId, predictedHome, predictedAway },
       include: {
         match: {

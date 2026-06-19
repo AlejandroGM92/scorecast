@@ -1047,10 +1047,15 @@ router.get('/predictions', adminAuth, async (req, res, next) => {
   }
 });
 
-// GET /api/admin/suspicious-predictions — predictions updated after match started
+// GET /api/admin/suspicious-predictions — predictions where lastEditedAt > match.dateTime
+// lastEditedAt is ONLY set when the user changes their scores — never by points calculation.
+// So this is 100% precise: null = never edited, non-null > match start = edited during match.
 router.get('/suspicious-predictions', adminAuth, async (_req, res, next) => {
   try {
-    const predictions = await prisma.prediction.findMany({
+    const suspicious = await prisma.prediction.findMany({
+      where: {
+        lastEditedAt: { not: null },
+      },
       include: {
         user: { select: { id: true, username: true, email: true } },
         match: {
@@ -1060,11 +1065,15 @@ router.get('/suspicious-predictions', adminAuth, async (_req, res, next) => {
           },
         },
       },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { lastEditedAt: 'desc' },
     });
 
-    const suspicious = predictions.filter(p => p.updatedAt > p.match.dateTime);
-    res.json(suspicious);
+    // Filter: only those edited AFTER the match started
+    const result = suspicious.filter(
+      p => p.lastEditedAt! > p.match.dateTime
+    );
+
+    res.json(result);
   } catch (error) {
     next(error);
   }
