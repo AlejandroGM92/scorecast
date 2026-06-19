@@ -58,10 +58,12 @@ export default function MatchDetailPage() {
   const hasScore   = match?.scoreHome !== null && match?.scoreHome !== undefined;
   const showSummary = isLive || isFinished || hasScore;
 
+  const showPredictions = isLive || isFinished || hasScore;
   const { data: allPredictions } = useQuery({
     queryKey: ['predictions', 'match', id],
     queryFn: () => predictionsApi.forMatch(id!).then((r) => r.data),
-    enabled: isFinished,
+    enabled: showPredictions,
+    refetchInterval: isLive ? 30_000 : false,
   });
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -237,10 +239,11 @@ export default function MatchDetailPage() {
         ) : null
       )}
 
-      {isFinished && allPredictions && allPredictions.length > 0 && (
+      {showPredictions && allPredictions && allPredictions.length > 0 && (
         <div className="glass-card overflow-hidden">
-          <div className="p-4 border-b border-white/5">
+          <div className="p-4 border-b border-white/5 flex items-center justify-between">
             <h3 className="font-semibold">Predicciones de todos</h3>
+            <span className="text-xs text-text-muted">{allPredictions.length} predicciones</span>
           </div>
           <div className="divide-y divide-white/5">
             {allPredictions.map((p: any, i: number) => (
@@ -248,7 +251,7 @@ export default function MatchDetailPage() {
                 <span className="text-text-muted">{p.user.username}</span>
                 <span className="font-medium">{p.predictedHome} - {p.predictedAway}</span>
                 <span className={clsx('font-bold', p.pointsEarned > 0 ? 'text-success' : 'text-text-muted')}>
-                  +{p.pointsEarned} pts
+                  {isFinished ? `+${p.pointsEarned} pts` : '—'}
                 </span>
               </div>
             ))}
