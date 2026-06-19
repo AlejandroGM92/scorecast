@@ -282,6 +282,16 @@ router.post('/2fa/disable', auth, async (req: AuthRequest, res, next) => {
   }
 });
 
+// ─── Public: champion lock status ────────────────────────────────────────────
+router.get('/champion-status', async (_req, res, next) => {
+  try {
+    const config = await prisma.systemConfig.findUnique({ where: { key: 'champion_locked' } });
+    res.json({ locked: config?.value === 'true' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // ─── Champion prediction (one-time) ──────────────────────────────────────────
 router.put('/champion', auth, async (req: AuthRequest, res, next) => {
   try {

@@ -61,9 +61,14 @@ export default function RulesPage() {
     queryFn: () => teamsApi.list().then((r) => r.data),
   });
 
+  const { data: championStatus } = useQuery({
+    queryKey: ['champion-status'],
+    queryFn: () => authApi.championStatus().then((r) => r.data),
+  });
+
   const { mutate: saveChampion, isPending } = useMutation({
     mutationFn: (teamCode: string) => authApi.updateChampion(teamCode),
-    onSuccess: ({ data }) => {
+    onSuccess: () => {
       toast.success('¡Predicción del campeón guardada!');
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       setConfirmed(false);
@@ -76,7 +81,7 @@ export default function RulesPage() {
   });
 
   const alreadyPredicted = !!profile?.championPrediction;
-  const championLocked = false; // TODO: fetch from /api/config/public when available
+  const championLocked = championStatus?.locked === true;
   const isLocked = alreadyPredicted || championLocked;
 
   const selectedTeam = teams?.find((t) => t.code === selected);

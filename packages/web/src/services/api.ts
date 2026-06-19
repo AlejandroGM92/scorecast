@@ -39,6 +39,7 @@ export const authApi = {
   changePassword: (currentPassword: string, newPassword: string) =>
     api.put('/auth/change-password', { currentPassword, newPassword }),
   updateChampion: (teamCode: string) => api.put('/auth/champion', { teamCode }),
+  championStatus: () => api.get('/auth/champion-status'),
   notifications: () => api.get('/auth/notifications'),
   markNotificationsRead: () => api.put('/auth/notifications/read'),
   clearNotifications: () => api.delete('/auth/notifications'),
