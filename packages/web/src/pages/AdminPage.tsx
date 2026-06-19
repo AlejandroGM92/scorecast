@@ -1110,9 +1110,12 @@ export default function AdminPage() {
                       <p className="font-semibold text-orange-300">{p.user.username}</p>
                       <p className="text-xs text-text-muted">{p.match.teamHome.name} vs {p.match.teamAway.name}</p>
                       <p className="text-xs text-text-muted">
-                        Predicción actual: <span className="text-white font-bold">{p.predictedHome}-{p.predictedAway}</span>
-                        {' · '}Partido inició: {format(new Date(p.match.dateTime), 'dd MMM HH:mm', { locale: es })}
-                        {' · '}Editada: {format(new Date(p.lastEditedAt), 'dd MMM HH:mm', { locale: es })}
+                        Predicción: <span className="text-white font-bold">{p.predictedHome}-{p.predictedAway}</span>
+                        {' · '}Partido: {format(new Date(p.match.dateTime), 'dd MMM HH:mm', { locale: es })}
+                        {' · '}Editada: {format(new Date(p.editedAt), 'dd MMM HH:mm', { locale: es })}
+                        {' · '}<span className={p.detectionMethod === 'exacto' ? 'text-success' : 'text-yellow-400'}>
+                          {p.detectionMethod === 'exacto' ? '✓ confirmado' : '⚠ estimado'}
+                        </span>
                       </p>
                     </div>
                     <button

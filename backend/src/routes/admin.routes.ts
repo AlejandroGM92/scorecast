@@ -1047,15 +1047,14 @@ router.get('/predictions', adminAuth, async (req, res, next) => {
   }
 });
 
-// GET /api/admin/suspicious-predictions — predictions where lastEditedAt > match.dateTime
-// lastEditedAt is ONLY set when the user changes their scores — never by points calculation.
-// So this is 100% precise: null = never edited, non-null > match start = edited during match.
+// GET /api/admin/suspicious-predictions — predictions edited after match started
+// Two methods combined:
+//   1. lastEditedAt (precise): set only when user changes scores, never by points calc
+//   2. updatedAt time-window (historical): updatedAt falls within match duration window
+//      (points calculation happens after the window, so false positives are excluded)
 router.get('/suspicious-predictions', adminAuth, async (_req, res, next) => {
   try {
-    const suspicious = await prisma.prediction.findMany({
-      where: {
-        lastEditedAt: { not: null },
-      },
+    const allPredictions = await prisma.prediction.findMany({
       include: {
         user: { select: { id: true, username: true, email: true } },
         match: {
@@ -1065,13 +1064,42 @@ router.get('/suspicious-predictions', adminAuth, async (_req, res, next) => {
           },
         },
       },
-      orderBy: { lastEditedAt: 'desc' },
+      orderBy: { match: { dateTime: 'desc' } },
     });
 
-    // Filter: only those edited AFTER the match started
-    const result = suspicious.filter(
-      p => p.lastEditedAt! > p.match.dateTime
-    );
+    const MATCH_DURATION_MS = 3 * 60 * 60 * 1000; // 3h window covers 90min + extra time + buffer
+
+    const suspicious = allPredictions.filter(p => {
+      const matchStart = p.match.dateTime;
+      const matchEnd   = new Date(matchStart.getTime() + MATCH_DURATION_MS);
+
+      // Method 1 (precise, future matches): lastEditedAt set after match started
+      if (p.lastEditedAt && p.lastEditedAt > matchStart) return true;
+
+      // Method 2 (historical, past matches): updatedAt inside match window
+      // Requires the prediction to have existed before match start (createdAt < matchStart)
+      // Points calculation runs after matchEnd, so updatedAt inside window = user edit
+      if (
+        p.createdAt < matchStart &&
+        p.updatedAt > matchStart &&
+        p.updatedAt < matchEnd
+      ) return true;
+
+      return false;
+    });
+
+    // Add detection method label for display
+    const result = suspicious.map(p => {
+      const matchStart = p.match.dateTime;
+      const matchEnd   = new Date(matchStart.getTime() + MATCH_DURATION_MS);
+      return {
+        ...p,
+        detectionMethod: p.lastEditedAt && p.lastEditedAt > matchStart
+          ? 'exacto'
+          : 'ventana-tiempo',
+        editedAt: p.lastEditedAt ?? p.updatedAt,
+      };
+    });
 
     res.json(result);
   } catch (error) {
