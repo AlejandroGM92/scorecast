@@ -106,6 +106,10 @@ export const adminApi = {
     get: () => api.get('/admin/email-toggle'),
     toggle: () => api.post('/admin/email-toggle'),
   },
+  championLock: {
+    get: () => api.get('/admin/champion-lock'),
+    toggle: () => api.post('/admin/champion-lock'),
+  },
   syncScores: () => api.post('/admin/sync-scores'),
   resetAllScores: () => api.post('/admin/reset-all-scores'),
   clearPredictions: () => api.delete('/admin/predictions'),

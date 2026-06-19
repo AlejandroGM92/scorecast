@@ -410,6 +410,59 @@ function EmailToggleCard() {
   );
 }
 
+// ─── Champion Lock Toggle ─────────────────────────────────────────────────────
+function ChampionLockCard() {
+  const qc = useQueryClient();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin', 'champion-lock'],
+    queryFn: () => adminApi.championLock.get().then((r) => r.data as { locked: boolean }),
+  });
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: () => adminApi.championLock.toggle(),
+    onSuccess: ({ data: res }) => {
+      qc.setQueryData(['admin', 'champion-lock'], res);
+      qc.invalidateQueries({ queryKey: ['champion-status'] });
+      toast.success(res.locked ? 'Predicción del campeón bloqueada' : 'Predicción del campeón abierta');
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
+  });
+
+  const locked = data?.locked ?? false;
+
+  return (
+    <div className="glass-card p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="font-semibold text-sm">Predicción del campeón</p>
+          <p className="text-xs text-text-muted mt-0.5">
+            Bloquea que cualquier usuario (nuevo o existente) escoja campeón
+          </p>
+        </div>
+        <button
+          onClick={() => mutate()}
+          disabled={isPending || isLoading}
+          className={clsx(
+            'relative w-12 h-6 rounded-full transition-colors duration-200 disabled:opacity-50 shrink-0',
+            locked ? 'bg-red-500' : 'bg-primary-500'
+          )}
+        >
+          <span
+            className={clsx(
+              'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200',
+              locked ? 'translate-x-6' : 'translate-x-0'
+            )}
+          />
+        </button>
+      </div>
+      <p className={clsx('text-xs font-semibold', locked ? 'text-red-400' : 'text-green-400')}>
+        {locked ? '🔒 Bloqueada — nadie puede escoger campeón' : '🔓 Abierta — los usuarios pueden escoger campeón'}
+      </p>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 // ─── Test Notify All Button ──────────────────────────────────────────────────
 function TestNotifyAllButton() {
@@ -1337,6 +1390,7 @@ export default function AdminPage() {
             </span>
           </div>
           <EmailToggleCard />
+          <ChampionLockCard />
           <TestNotifyAllButton />
           <TestEmailButton />
           <div className="glass-card overflow-hidden">

@@ -679,6 +679,32 @@ router.post('/email-toggle', adminAuth, async (_req, res, next) => {
   }
 });
 
+// GET /api/admin/champion-lock — get champion prediction lock status
+router.get('/champion-lock', adminAuth, async (_req, res, next) => {
+  try {
+    const config = await prisma.systemConfig.findUnique({ where: { key: 'champion_locked' } });
+    res.json({ locked: config?.value === 'true' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/admin/champion-lock — toggle champion prediction lock
+router.post('/champion-lock', adminAuth, async (_req, res, next) => {
+  try {
+    const current = await prisma.systemConfig.findUnique({ where: { key: 'champion_locked' } });
+    const newValue = current?.value === 'true' ? 'false' : 'true';
+    await prisma.systemConfig.upsert({
+      where: { key: 'champion_locked' },
+      update: { value: newValue },
+      create: { key: 'champion_locked', value: newValue, description: 'Block all champion predictions' },
+    });
+    res.json({ locked: newValue === 'true' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/admin/sync-odds — apply correct champion odds to all 48 WC teams
 router.post('/sync-odds', adminAuth, async (_req, res, next) => {
   try {
