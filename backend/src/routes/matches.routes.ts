@@ -55,13 +55,12 @@ async function detectCurrentPhase(): Promise<string> {
 // GET /api/matches - list with optional filters
 router.get('/', optionalAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { phase, status, date } = req.query;
+    const { phase, status, date, all } = req.query;
 
     const where: any = { competition: 'WORLD_CUP' };
-    // When no phase filter provided, auto-detect the current active phase
     if (phase) {
       where.phase = phase;
-    } else if (!status && !date) {
+    } else if (!status && !date && all !== 'true') {
       where.phase = await detectCurrentPhase();
     }
     if (status) where.status = status;

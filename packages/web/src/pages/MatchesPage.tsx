@@ -121,7 +121,10 @@ export default function MatchesPage() {
 
   const { data: matches, isLoading } = useQuery<Match[]>({
     queryKey: ['matches', phase],
-    queryFn: () => matchesApi.list(phase ? { phase } : undefined).then((r) => r.data),
+    queryFn: () => {
+      if (phase === '') return matchesApi.list({ all: 'true' }).then((r) => r.data);
+      return matchesApi.list(phase ? { phase } : undefined).then((r) => r.data);
+    },
     refetchInterval: 30_000,
   });
 
