@@ -565,7 +565,7 @@ export default function AdminPage() {
   const { data: users, isLoading: loadingUsers } = useQuery({
     queryKey: ['admin', 'users'],
     queryFn: () => adminApi.users.list().then((r) => r.data),
-    enabled: tab === 'users',
+    enabled: tab === 'users' || tab === 'predicciones',
   });
 
   const { data: matches, isLoading: loadingMatches } = useQuery({
@@ -595,6 +595,22 @@ export default function AdminPage() {
       qc.invalidateQueries({ queryKey: ['leaderboard'] });
     },
     onError: (e: any) => toast.error(e.response?.data?.error || 'Error'),
+  });
+
+  const [proxyUserId, setProxyUserId] = useState('');
+  const [proxyMatchId, setProxyMatchId] = useState('');
+  const [proxyHome, setProxyHome] = useState('');
+  const [proxyAway, setProxyAway] = useState('');
+
+  const predictForUser = useMutation({
+    mutationFn: () => adminApi.predictForUser(proxyUserId, proxyMatchId, parseInt(proxyHome), parseInt(proxyAway)),
+    onSuccess: (res: any) => {
+      toast.success(res.data.message);
+      setProxyHome('');
+      setProxyAway('');
+      qc.invalidateQueries({ queryKey: ['admin', 'predictions'] });
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Error al guardar predicción'),
   });
 
   const simulateMatches = useMutation({
@@ -1163,6 +1179,74 @@ export default function AdminPage() {
       {/* ── TOKENS TAB ── */}
       {tab === 'predicciones' && (
         <div className="space-y-4">
+
+          {/* ── Predecir por usuario ── */}
+          <div className="glass-card p-4 space-y-3">
+            <p className="font-semibold text-sm">Predecir por usuario</p>
+            <p className="text-xs text-text-muted">El admin puede registrar la predicción de un usuario que no tiene acceso.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-text-muted block mb-1">Usuario</label>
+                <select
+                  value={proxyUserId}
+                  onChange={(e) => setProxyUserId(e.target.value)}
+                  className="input-field w-full bg-[#0f1729] text-white text-sm"
+                >
+                  <option value="">Seleccionar usuario</option>
+                  {(users ?? []).filter((u: any) => u.role !== 'ADMIN').sort((a: any, b: any) => a.username.localeCompare(b.username)).map((u: any) => (
+                    <option key={u.id} value={u.id}>{u.username}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-text-muted block mb-1">Partido</label>
+                <select
+                  value={proxyMatchId}
+                  onChange={(e) => setProxyMatchId(e.target.value)}
+                  className="input-field w-full bg-[#0f1729] text-white text-sm"
+                >
+                  <option value="">Seleccionar partido</option>
+                  {(matches ?? [])
+                    .filter((m: any) => !m.pointsCalculated && ['SCHEDULED', 'LOCKED'].includes(m.status))
+                    .map((m: any) => (
+                      <option key={m.id} value={m.id}>
+                        {m.teamHome.name} vs {m.teamAway.name} — {format(new Date(m.dateTime), 'dd MMM HH:mm', { locale: es })}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <label className="text-xs text-text-muted block mb-1">Goles local</label>
+                <input
+                  type="number" min="0" max="99"
+                  value={proxyHome}
+                  onChange={(e) => setProxyHome(e.target.value)}
+                  placeholder="0"
+                  className="input-field w-full bg-[#0f1729] text-white text-sm text-center"
+                />
+              </div>
+              <span className="text-text-muted pt-5">—</span>
+              <div className="flex-1">
+                <label className="text-xs text-text-muted block mb-1">Goles visitante</label>
+                <input
+                  type="number" min="0" max="99"
+                  value={proxyAway}
+                  onChange={(e) => setProxyAway(e.target.value)}
+                  placeholder="0"
+                  className="input-field w-full bg-[#0f1729] text-white text-sm text-center"
+                />
+              </div>
+              <button
+                onClick={() => predictForUser.mutate()}
+                disabled={!proxyUserId || !proxyMatchId || proxyHome === '' || proxyAway === '' || predictForUser.isPending}
+                className="btn-primary text-sm px-4 py-2 mt-5 shrink-0 disabled:opacity-40"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
 
           {/* Header con filtro y export */}
           <div className="glass-card p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">

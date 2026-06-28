@@ -1191,6 +1191,36 @@ router.get('/suspicious-predictions', adminAuth, async (_req, res, next) => {
   }
 });
 
+// POST /api/admin/predictions/for-user — admin submits a prediction on behalf of a user
+router.post('/predictions/for-user', adminAuth, async (req, res, next) => {
+  try {
+    const { userId, matchId, predictedHome, predictedAway } = z.object({
+      userId: z.string(),
+      matchId: z.string(),
+      predictedHome: z.number().int().min(0).max(99),
+      predictedAway: z.number().int().min(0).max(99),
+    }).parse(req.body);
+
+    const match = await prisma.match.findUnique({ where: { id: matchId }, select: { status: true, pointsCalculated: true } });
+    if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
+    if (match.pointsCalculated) return res.status(400).json({ error: 'Los puntos ya fueron calculados para este partido' });
+
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const prediction = await prisma.prediction.upsert({
+      where: { userId_matchId: { userId, matchId } },
+      update: { predictedHome, predictedAway },
+      create: { userId, matchId, predictedHome, predictedAway },
+      select: { id: true, predictedHome: true, predictedAway: true },
+    });
+
+    res.json({ success: true, prediction, message: `Predicción de ${user.username} guardada: ${predictedHome}-${predictedAway}` });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // DELETE /api/admin/predictions/:id — nullify a single prediction (reset to 0-0, no points)
 router.delete('/predictions/:id', adminAuth, async (req, res, next) => {
   try {

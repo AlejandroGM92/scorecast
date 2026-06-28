@@ -130,6 +130,8 @@ export const adminApi = {
   recalculateStandings: () => api.post('/admin/recalculate-standings'),
   suspiciousPredictions: () => api.get('/admin/suspicious-predictions'),
   deletePrediction: (id: string) => api.delete(`/admin/predictions/${id}`),
+  predictForUser: (userId: string, matchId: string, predictedHome: number, predictedAway: number) =>
+    api.post('/admin/predictions/for-user', { userId, matchId, predictedHome, predictedAway }),
   setMatchScore: (id: string, data: Record<string, unknown>) => api.put(`/admin/match/${id}/score`, data),
   config: {
     list: () => api.get('/admin/config'),
