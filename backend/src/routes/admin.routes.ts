@@ -988,6 +988,64 @@ router.post('/test-notify-all', adminAuth, async (req: AuthRequest, res, next) =
   }
 });
 
+// POST /api/admin/seed-round-of-32 — create the 16 Round of 32 knockout matches
+router.post('/seed-round-of-32', adminAuth, async (_req, res, next) => {
+  try {
+    const fixtures = [
+      { num: 73, home: 'RSA', away: 'CAN', date: '2026-06-28T19:00:00Z', venue: 'SoFi Stadium', city: 'Los Angeles' },
+      { num: 74, home: 'GER', away: 'PAR', date: '2026-06-29T20:30:00Z', venue: 'Gillette Stadium', city: 'Foxborough' },
+      { num: 75, home: 'NED', away: 'MAR', date: '2026-06-30T02:00:00Z', venue: 'Estadio BBVA', city: 'Guadalupe' },
+      { num: 76, home: 'BRA', away: 'JPN', date: '2026-06-29T17:00:00Z', venue: 'NRG Stadium', city: 'Houston' },
+      { num: 77, home: 'FRA', away: 'SWE', date: '2026-06-30T23:00:00Z', venue: 'MetLife Stadium', city: 'East Rutherford' },
+      { num: 78, home: 'CIV', away: 'NOR', date: '2026-06-30T17:00:00Z', venue: 'AT&T Stadium', city: 'Arlington' },
+      { num: 79, home: 'MEX', away: 'ECU', date: '2026-07-01T02:00:00Z', venue: 'Estadio Azteca', city: 'Ciudad de México' },
+      { num: 80, home: 'ENG', away: 'COD', date: '2026-07-01T17:00:00Z', venue: 'Mercedes-Benz Stadium', city: 'Atlanta' },
+      { num: 81, home: 'USA', away: 'BIH', date: '2026-07-01T21:00:00Z', venue: 'Levi\'s Stadium', city: 'Santa Clara' },
+      { num: 82, home: 'BEL', away: 'SEN', date: '2026-07-01T17:00:00Z', venue: 'Estadio Akron', city: 'Zapopan' },
+      { num: 83, home: 'POR', away: 'CRO', date: '2026-07-02T21:00:00Z', venue: 'BMO Field', city: 'Toronto' },
+      { num: 84, home: 'ESP', away: 'AUT', date: '2026-07-02T17:00:00Z', venue: 'AT&T Stadium', city: 'Arlington' },
+      { num: 85, home: 'SUI', away: 'ALG', date: '2026-07-02T21:00:00Z', venue: 'GEHA Field at Arrowhead Stadium', city: 'Kansas City' },
+      { num: 86, home: 'ARG', away: 'CPV', date: '2026-07-03T21:00:00Z', venue: 'Hard Rock Stadium', city: 'Miami' },
+      { num: 87, home: 'COL', away: 'GHA', date: '2026-07-03T17:00:00Z', venue: 'GEHA Field at Arrowhead Stadium', city: 'Kansas City' },
+      { num: 88, home: 'AUS', away: 'EGY', date: '2026-07-03T17:00:00Z', venue: 'Lumen Field', city: 'Seattle' },
+    ];
+
+    const results = [];
+    for (const f of fixtures) {
+      const placeholderId = 9000000 + f.num;
+      const existing = await prisma.match.findUnique({ where: { apiFootballId: placeholderId } });
+      if (existing) { results.push({ match: `${f.home} vs ${f.away}`, status: 'ya existe' }); continue; }
+
+      const home = await prisma.team.findUnique({ where: { code: f.home } });
+      const away = await prisma.team.findUnique({ where: { code: f.away } });
+      if (!home || !away) {
+        results.push({ match: `${f.home} vs ${f.away}`, status: `equipo no encontrado: ${!home ? f.home : f.away}` });
+        continue;
+      }
+
+      await prisma.match.create({
+        data: {
+          apiFootballId: placeholderId,
+          matchNumber: f.num,
+          round: 'Round of 32',
+          phase: 'ROUND_OF_32',
+          teamHomeId: home.id,
+          teamAwayId: away.id,
+          dateTime: new Date(f.date),
+          venue: f.venue,
+          city: f.city,
+          status: 'SCHEDULED',
+        },
+      });
+      results.push({ match: `${home.name} vs ${away.name}`, status: 'creado' });
+    }
+
+    res.json({ success: true, results });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/admin/seed-missing-matches — add group-stage matches missing from initial sync
 router.post('/seed-missing-matches', adminAuth, async (_req, res, next) => {
   try {

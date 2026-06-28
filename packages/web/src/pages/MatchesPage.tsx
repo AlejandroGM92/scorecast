@@ -15,6 +15,9 @@ const PHASES: { value: string; label: string }[] = [
   { value: 'FINAL', label: 'Final' },
 ];
 
+// 8 best third-place teams that qualified for Round of 32
+const THIRD_PLACE_QUALIFIED = new Set(['ECU', 'BIH', 'PAR', 'SWE', 'SEN', 'ALG', 'GHA', 'COD']);
+
 function GroupStandingsView() {
   const { data: teams, isLoading } = useQuery<Team[]>({
     queryKey: ['teams'],
@@ -68,18 +71,21 @@ function GroupStandingsView() {
             {/* Team rows */}
             <div className="divide-y divide-white/5">
               {groupTeams.map((team, idx) => {
-                const qualified = idx < 2;
+                const direct = idx < 2;
+                const thirdQualified = idx === 2 && THIRD_PLACE_QUALIFIED.has(team.code);
+                const qualified = direct || thirdQualified;
                 return (
                   <div
                     key={team.id}
-                    className="grid grid-cols-[1fr_repeat(8,_auto)] items-center px-3 py-2.5"
+                    className={`grid grid-cols-[1fr_repeat(8,_auto)] items-center px-3 py-2.5 ${qualified ? '' : 'opacity-60'}`}
                   >
                     {/* Team name with position and flag */}
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className={`w-0.5 h-6 rounded-full shrink-0 ${qualified ? 'bg-primary-400' : 'bg-white/10'}`} />
+                      <div className={`w-0.5 h-6 rounded-full shrink-0 ${direct ? 'bg-primary-400' : thirdQualified ? 'bg-orange-400' : 'bg-white/10'}`} />
                       <span className="text-xs text-text-muted w-4 shrink-0">{idx + 1}</span>
                       <img src={team.flag} alt={team.name} className="w-6 h-6 object-cover rounded shrink-0" />
                       <span className="text-sm font-medium truncate">{team.name}</span>
+                      {thirdQualified && <span className="text-[9px] text-orange-400 font-semibold shrink-0">3°</span>}
                     </div>
                     {[team.played, team.won, team.drawn, team.lost, team.goalsFor, team.goalsAgainst, team.goalDifference].map((val, i) => (
                       <span key={i} className="text-xs text-center w-7 text-text-muted">
@@ -93,9 +99,15 @@ function GroupStandingsView() {
             </div>
 
             {/* Legend */}
-            <div className="px-4 py-2 border-t border-white/5 flex items-center gap-2">
-              <div className="w-0.5 h-3 rounded-full bg-primary-400" />
-              <span className="text-[10px] text-text-muted">Clasifica a octavos</span>
+            <div className="px-4 py-2 border-t border-white/5 flex flex-wrap items-center gap-x-4 gap-y-1">
+              <div className="flex items-center gap-1.5">
+                <div className="w-0.5 h-3 rounded-full bg-primary-400" />
+                <span className="text-[10px] text-text-muted">Clasificado directo</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-0.5 h-3 rounded-full bg-orange-400" />
+                <span className="text-[10px] text-text-muted">Mejor 3° clasificado</span>
+              </div>
             </div>
           </div>
         );
