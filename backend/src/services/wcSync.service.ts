@@ -95,8 +95,15 @@ async function processFixtures(fixtures: EspnFixture[], teamMap: Map<string, str
 
     const espnId = parseInt(f.id, 10);
 
+    // Try both home/away orderings — ESPN may list teams in different order than our seed
     let match = await prisma.match.findFirst({
-      where: { OR: [{ apiFootballId: espnId }, { teamHomeId: homeId, teamAwayId: awayId, dateTime: { gte: dayStart, lte: dayEnd } }] },
+      where: {
+        OR: [
+          { apiFootballId: espnId },
+          { teamHomeId: homeId, teamAwayId: awayId, dateTime: { gte: dayStart, lte: dayEnd } },
+          { teamHomeId: awayId, teamAwayId: homeId, dateTime: { gte: dayStart, lte: dayEnd } },
+        ],
+      },
     });
 
     if (!match) {
@@ -105,9 +112,20 @@ async function processFixtures(fixtures: EspnFixture[], teamMap: Map<string, str
       continue;
     }
 
+    // Don't let sync override a match admin already finished and calculated points for
+    if (match.pointsCalculated) {
+      logger.info(`  ⏭ Saltando ${homeNameEn} vs ${awayNameEn} — puntos ya calculados`);
+      await prisma.match.update({ where: { id: match.id }, data: { apiFootballId: espnId, lastSyncAt: new Date() } });
+      matchesUpdated++;
+      continue;
+    }
+
     const status = mapStatus(f.status.type.name);
     const isActive = status === 'LIVE' || status === 'HALFTIME' || status === 'FINISHED';
-    const wasFinished = match.pointsCalculated || match.status === 'FINISHED';
+    const wasFinished = match.status === 'FINISHED';
+
+    // If admin manually set FINISHED, don't let ESPN revert to a lesser status
+    const finalStatus = (match.status === 'FINISHED' && status !== 'FINISHED') ? 'FINISHED' : status;
 
     const scoreHome = isActive ? parseInt(home.score, 10) : null;
     const scoreAway = isActive ? parseInt(away.score, 10) : null;
@@ -116,12 +134,12 @@ async function processFixtures(fixtures: EspnFixture[], teamMap: Map<string, str
       where: { id: match.id },
       data: {
         apiFootballId: espnId,
-        status,
+        status: finalStatus,
         scoreHome: isActive ? scoreHome : undefined,
         scoreAway: isActive ? scoreAway : undefined,
-        minute: status === 'LIVE' ? Math.round(f.status.clock / 60) || null : null,
+        minute: finalStatus === 'LIVE' ? Math.round(f.status.clock / 60) || null : null,
         lastSyncAt: new Date(),
-        ...(status === 'FINISHED' && !wasFinished ? { pointsCalculated: false } : {}),
+        ...(finalStatus === 'FINISHED' && !wasFinished ? { pointsCalculated: false } : {}),
       },
     });
 
