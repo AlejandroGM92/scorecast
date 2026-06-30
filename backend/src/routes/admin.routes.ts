@@ -1128,7 +1128,7 @@ router.post('/seed-round-of-16', adminAuth, async (_req, res, next) => {
           dateTime: new Date(slot.date), status: 'SCHEDULED',
           phase: 'ROUND_OF_16', round: 'Octavos de Final',
           venue: slot.venue, city: slot.city, apiFootballId: slot.espnId,
-        },
+        } as any,
       });
       results.push({ match: `${homeTeamName} vs ${awayTeamName}`, status: 'creado' });
     }

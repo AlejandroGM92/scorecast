@@ -145,7 +145,7 @@ async function processFixtures(fixtures: EspnFixture[], teamMap: Map<string, str
             venue: f.venue?.fullName ?? null,
             city: f.venue?.address?.city ?? null,
             apiFootballId: espnId,
-          },
+          } as any,
         });
         logger.info(`  ✨ Creado: ${homeNameEn} vs ${awayNameEn} [${label}] ${fixtureDate.toISOString().slice(0, 10)}`);
         matchesCreated++;
