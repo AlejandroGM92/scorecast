@@ -1064,6 +1064,81 @@ router.post('/seed-round-of-32', adminAuth, async (_req, res, next) => {
   }
 });
 
+// POST /api/admin/seed-round-of-16 — create R16 matches from R32 winners (ESPN bracket data)
+router.post('/seed-round-of-16', adminAuth, async (_req, res, next) => {
+  try {
+    // Bracket from ESPN (IDs 760502-760509): homeTeams = bracket-left R32, awayTeams = bracket-right R32
+    // ESPN IDs sorted ascending determine bracket positions 1-16
+    const R16_BRACKET = [
+      { espnId: 760502, homeTeams: ['RSA','CAN'], awayTeams: ['NED','MAR'],  date: '2026-07-04T17:00:00Z', venue: 'NRG Stadium',            city: 'Houston' },
+      { espnId: 760503, homeTeams: ['GER','PAR'], awayTeams: ['CIV','NOR'],  date: '2026-07-04T21:00:00Z', venue: 'Lincoln Financial Field', city: 'Philadelphia' },
+      { espnId: 760504, homeTeams: ['BRA','JPN'], awayTeams: ['MEX','ECU'],  date: '2026-07-05T20:00:00Z', venue: 'MetLife Stadium',         city: 'East Rutherford' },
+      { espnId: 760505, homeTeams: ['FRA','SWE'], awayTeams: ['BEL','SEN'],  date: '2026-07-06T00:00:00Z', venue: 'Estadio Banorte',         city: 'Mexico City' },
+      { espnId: 760506, homeTeams: ['POR','CRO'], awayTeams: ['ESP','AUT'],  date: '2026-07-06T19:00:00Z', venue: 'AT&T Stadium',            city: 'Arlington' },
+      { espnId: 760507, homeTeams: ['USA','BIH'], awayTeams: ['ENG','COD'],  date: '2026-07-07T00:00:00Z', venue: 'Lumen Field',             city: 'Seattle' },
+      { espnId: 760509, homeTeams: ['AUS','EGY'], awayTeams: ['COL','GHA'],  date: '2026-07-07T16:00:00Z', venue: 'Mercedes-Benz Stadium',   city: 'Atlanta' },
+      { espnId: 760508, homeTeams: ['SUI','ALG'], awayTeams: ['ARG','CPV'],  date: '2026-07-07T20:00:00Z', venue: 'BC Place',                city: 'Vancouver' },
+    ];
+
+    const allTeams = await prisma.team.findMany({ select: { id: true, code: true, name: true } });
+    const codeMap = new Map(allTeams.map(t => [t.code, t]));
+
+    function getWinnerId(match: { status: string; scoreHome: number | null; scoreAway: number | null; scoreHomePen: number | null; scoreAwayPen: number | null; teamHomeId: string; teamAwayId: string }): string | null {
+      if (match.status !== 'FINISHED' || match.scoreHome === null || match.scoreAway === null) return null;
+      if (match.scoreHome > match.scoreAway) return match.teamHomeId;
+      if (match.scoreAway > match.scoreHome) return match.teamAwayId;
+      if (match.scoreHomePen !== null && match.scoreAwayPen !== null) {
+        if (match.scoreHomePen > match.scoreAwayPen) return match.teamHomeId;
+        if (match.scoreAwayPen > match.scoreHomePen) return match.teamAwayId;
+      }
+      return null;
+    }
+
+    const results = [];
+    for (const slot of R16_BRACKET) {
+      const [hA, hB] = slot.homeTeams.map(c => codeMap.get(c)?.id).filter(Boolean) as string[];
+      const [aA, aB] = slot.awayTeams.map(c => codeMap.get(c)?.id).filter(Boolean) as string[];
+      const slotLabel = `${slot.homeTeams.join('/')}: vs ${slot.awayTeams.join('/')}`;
+
+      if (!hA || !hB || !aA || !aB) { results.push({ match: slotLabel, status: 'equipo no encontrado en DB' }); continue; }
+
+      const homeR32 = await prisma.match.findFirst({ where: { phase: 'ROUND_OF_32', OR: [{ teamHomeId: hA, teamAwayId: hB }, { teamHomeId: hB, teamAwayId: hA }] } });
+      const awayR32 = await prisma.match.findFirst({ where: { phase: 'ROUND_OF_32', OR: [{ teamHomeId: aA, teamAwayId: aB }, { teamHomeId: aB, teamAwayId: aA }] } });
+
+      if (!homeR32 || !awayR32) { results.push({ match: slotLabel, status: 'partido R32 no encontrado' }); continue; }
+
+      const homeWinnerId = getWinnerId(homeR32 as any);
+      const awayWinnerId = getWinnerId(awayR32 as any);
+
+      if (!homeWinnerId || !awayWinnerId) {
+        const pending = [!homeWinnerId && slot.homeTeams.join('/'), !awayWinnerId && slot.awayTeams.join('/')].filter(Boolean).join(' y ');
+        results.push({ match: slotLabel, status: `pendiente — falta resultado de: ${pending}` });
+        continue;
+      }
+
+      const homeTeamName = allTeams.find(t => t.id === homeWinnerId)?.name ?? homeWinnerId;
+      const awayTeamName = allTeams.find(t => t.id === awayWinnerId)?.name ?? awayWinnerId;
+
+      const existing = await prisma.match.findFirst({ where: { phase: 'ROUND_OF_16', OR: [{ apiFootballId: slot.espnId }, { teamHomeId: homeWinnerId, teamAwayId: awayWinnerId }, { teamHomeId: awayWinnerId, teamAwayId: homeWinnerId }] } });
+      if (existing) { results.push({ match: `${homeTeamName} vs ${awayTeamName}`, status: 'ya existe' }); continue; }
+
+      await prisma.match.create({
+        data: {
+          teamHomeId: homeWinnerId, teamAwayId: awayWinnerId,
+          dateTime: new Date(slot.date), status: 'SCHEDULED',
+          phase: 'ROUND_OF_16', round: 'Octavos de Final',
+          venue: slot.venue, city: slot.city, apiFootballId: slot.espnId,
+        },
+      });
+      results.push({ match: `${homeTeamName} vs ${awayTeamName}`, status: 'creado' });
+    }
+
+    res.json({ success: true, results });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/admin/fix-round-of-32-times — correct kick-off times for all R32 matches
 router.post('/fix-round-of-32-times', adminAuth, async (_req, res, next) => {
   try {

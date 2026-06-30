@@ -40,9 +40,31 @@ function resolveTeamName(espnName: string): string {
 
 export interface WcSyncResult {
   matchesUpdated: number;
+  matchesCreated: number;
   matchesNotFound: number;
   pointsCalculated: number;
 }
+
+// WC 2026 phase detection by date (dates are fixed by FIFA calendar)
+type MatchPhase = 'ROUND_OF_32' | 'ROUND_OF_16' | 'QUARTER_FINALS' | 'SEMI_FINALS' | 'THIRD_PLACE' | 'FINAL';
+
+function detectPhase(d: Date): MatchPhase {
+  const iso = d.toISOString().slice(0, 10);
+  if (iso <= '2026-07-03') return 'ROUND_OF_32';
+  if (iso <= '2026-07-07') return 'ROUND_OF_16';
+  if (iso <= '2026-07-12') return 'QUARTER_FINALS';
+  if (iso <= '2026-07-16') return 'SEMI_FINALS';
+  if (iso === '2026-07-18') return 'THIRD_PLACE';
+  return 'FINAL';
+}
+
+const PHASE_LABEL: Record<string, string> = {
+  ROUND_OF_16: 'Octavos de Final',
+  QUARTER_FINALS: 'Cuartos de Final',
+  SEMI_FINALS: 'Semifinal',
+  THIRD_PLACE: 'Tercer Puesto',
+  FINAL: 'Final',
+};
 
 async function buildTeamNameMap(): Promise<Map<string, string>> {
   const teams = await prisma.team.findMany({ select: { id: true, name: true, nameEn: true, code: true } });
@@ -58,6 +80,7 @@ async function buildTeamNameMap(): Promise<Map<string, string>> {
 
 async function processFixtures(fixtures: EspnFixture[], teamMap: Map<string, string>): Promise<WcSyncResult> {
   let matchesUpdated = 0;
+  let matchesCreated = 0;
   let matchesNotFound = 0;
   const newlyFinished: string[] = [];
 
@@ -107,9 +130,30 @@ async function processFixtures(fixtures: EspnFixture[], teamMap: Map<string, str
     });
 
     if (!match) {
-      logger.warn(`  ⚠ Partido no encontrado en DB: ${homeNameEn} vs ${awayNameEn} el ${fixtureDate.toISOString().slice(0, 10)} (espnId=${espnId})`);
-      matchesNotFound++;
-      continue;
+      // Auto-create knockout matches that ESPN has with real teams but we don't have yet
+      const phase = detectPhase(fixtureDate);
+      if (phase !== 'ROUND_OF_32') {
+        const label = PHASE_LABEL[phase] ?? phase;
+        match = await prisma.match.create({
+          data: {
+            teamHomeId: homeId,
+            teamAwayId: awayId,
+            dateTime: fixtureDate,
+            status: 'SCHEDULED',
+            phase,
+            round: label,
+            venue: f.venue?.fullName ?? null,
+            city: f.venue?.address?.city ?? null,
+            apiFootballId: espnId,
+          },
+        });
+        logger.info(`  ✨ Creado: ${homeNameEn} vs ${awayNameEn} [${label}] ${fixtureDate.toISOString().slice(0, 10)}`);
+        matchesCreated++;
+      } else {
+        logger.warn(`  ⚠ Partido no encontrado en DB: ${homeNameEn} vs ${awayNameEn} el ${fixtureDate.toISOString().slice(0, 10)} (espnId=${espnId})`);
+        matchesNotFound++;
+        continue;
+      }
     }
 
     // Don't let sync override a match admin already finished and calculated points for
@@ -154,7 +198,7 @@ async function processFixtures(fixtures: EspnFixture[], teamMap: Map<string, str
   await recalculateGroupStandings();
   const pointsCalculated = newlyFinished.length;
 
-  return { matchesUpdated, matchesNotFound, pointsCalculated };
+  return { matchesUpdated, matchesCreated, matchesNotFound, pointsCalculated };
 }
 
 export async function syncWorldCupScores(): Promise<WcSyncResult> {

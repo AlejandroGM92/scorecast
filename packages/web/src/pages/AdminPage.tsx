@@ -687,7 +687,8 @@ export default function AdminPage() {
   const wcSync = useMutation({
     mutationFn: () => adminApi.wcSync(),
     onSuccess: ({ data }: any) => {
-      toast.success(`Mundial sync: ${data.matchesUpdated} actualizados, ${data.matchesNotFound} no encontrados`);
+      const created = data.matchesCreated ? `, ${data.matchesCreated} creados` : '';
+      toast.success(`Mundial sync: ${data.matchesUpdated} actualizados${created}, ${data.matchesNotFound} no encontrados`);
       qc.invalidateQueries({ queryKey: ['admin', 'matches'] });
       qc.invalidateQueries({ queryKey: ['matches'] });
     },
@@ -998,6 +999,30 @@ export default function AdminPage() {
             className="btn-primary text-xs px-3 py-2 shrink-0"
           >
             Agregar
+          </button>
+        </div>
+
+        {/* Sembrar octavos de final */}
+        <div className="glass-card px-4 py-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold">Octavos de Final — Desde ganadores de Dieciseisavos</p>
+            <p className="text-xs text-text-muted mt-0.5">Crea los 8 partidos de octavos con los equipos ya clasificados</p>
+          </div>
+          <button
+            onClick={async () => {
+              try {
+                const res = await adminApi.seedRoundOf16();
+                const created = res.data.results.filter((r: any) => r.status === 'creado').length;
+                const existing = res.data.results.filter((r: any) => r.status === 'ya existe').length;
+                const pending = res.data.results.filter((r: any) => r.status.startsWith('pendiente')).length;
+                toast.success(`Octavos: ${created} creados, ${existing} ya existían, ${pending} pendientes`);
+              } catch {
+                toast.error('Error al sembrar octavos');
+              }
+            }}
+            className="btn-primary text-xs px-3 py-2 shrink-0"
+          >
+            Sembrar Octavos
           </button>
         </div>
 
