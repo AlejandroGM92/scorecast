@@ -450,18 +450,23 @@ router.put('/match/:id/score', adminAuth, async (req, res, next) => {
     const schema = z.object({
       scoreHome: z.number().int().min(0).optional(),
       scoreAway: z.number().int().min(0).optional(),
+      scoreHomePen: z.number().int().min(0).nullable().optional(),
+      scoreAwayPen: z.number().int().min(0).nullable().optional(),
       status: z.enum(['SCHEDULED', 'LOCKED', 'LIVE', 'HALFTIME', 'FINISHED']).optional(),
     });
 
     const data = schema.parse(req.body);
+    const isScheduled = data.status === 'SCHEDULED';
 
     const match = await prisma.match.update({
       where: { id: req.params.id },
       data: {
-        ...data,
-        scoreHome: data.status === 'SCHEDULED' ? null : data.scoreHome,
-        scoreAway: data.status === 'SCHEDULED' ? null : data.scoreAway,
-        pointsCalculated: data.status === 'SCHEDULED' ? false : data.status === 'FINISHED' ? false : undefined,
+        status: data.status,
+        scoreHome: isScheduled ? null : data.scoreHome,
+        scoreAway: isScheduled ? null : data.scoreAway,
+        scoreHomePen: isScheduled ? null : data.scoreHomePen,
+        scoreAwayPen: isScheduled ? null : data.scoreAwayPen,
+        pointsCalculated: isScheduled ? false : data.status === 'FINISHED' ? false : undefined,
       },
     });
 

@@ -100,13 +100,20 @@ function EditUserModal({
 function ScoreModal({ match, onClose }: { match: any; onClose: () => void }) {
   const [home, setHome] = useState(match.scoreHome ?? 0);
   const [away, setAway] = useState(match.scoreAway ?? 0);
-  // Default to FINISHED when match is past start time — avoids admin forgetting to change status
+  const [penHome, setPenHome] = useState<number>(match.scoreHomePen ?? 0);
+  const [penAway, setPenAway] = useState<number>(match.scoreAwayPen ?? 0);
+  const [hasPenalty, setHasPenalty] = useState(!!(match.scoreHomePen !== null && match.scoreHomePen !== undefined));
   const defaultStatus = ['LOCKED', 'LIVE', 'HALFTIME'].includes(match.status) ? 'FINISHED' : match.status;
   const [status, setStatus] = useState(defaultStatus);
   const qc = useQueryClient();
 
+  const isDraw = home === away;
+
   const { mutate: setScore, isPending: settingScore } = useMutation({
-    mutationFn: () => adminApi.matches.setScore(match.id, status === 'SCHEDULED' ? { status } : { scoreHome: home, scoreAway: away, status }),
+    mutationFn: () => adminApi.matches.setScore(match.id, status === 'SCHEDULED' ? { status } : {
+      scoreHome: home, scoreAway: away, status,
+      ...(status === 'FINISHED' && isDraw && hasPenalty ? { scoreHomePen: penHome, scoreAwayPen: penAway } : { scoreHomePen: null, scoreAwayPen: null }),
+    }),
     onSuccess: () => {
       toast.success('Marcador actualizado');
       qc.invalidateQueries({ queryKey: ['admin', 'matches'] });
@@ -158,6 +165,37 @@ function ScoreModal({ match, onClose }: { match: any; onClose: () => void }) {
             </div>
           </div>
         </div>
+
+        {/* Penalty section — only when tied and FINISHED */}
+        {isDraw && status === 'FINISHED' && (
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={hasPenalty} onChange={(e) => setHasPenalty(e.target.checked)} className="accent-primary-500" />
+              <span className="text-sm text-text-muted">Hubo penaltis</span>
+            </label>
+            {hasPenalty && (
+              <div className="flex items-center justify-center gap-4 bg-white/5 rounded-lg p-3">
+                <div className="flex flex-col items-center gap-1">
+                  <img src={match.teamHome.flag} className="w-7 h-7 rounded object-cover" />
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setPenHome(Math.max(0, penHome - 1))} className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 font-bold text-sm">−</button>
+                    <span className="w-6 text-center font-bold">{penHome}</span>
+                    <button onClick={() => setPenHome(penHome + 1)} className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 font-bold text-sm">+</button>
+                  </div>
+                </div>
+                <span className="text-text-muted text-sm pb-4">pen</span>
+                <div className="flex flex-col items-center gap-1">
+                  <img src={match.teamAway.flag} className="w-7 h-7 rounded object-cover" />
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setPenAway(Math.max(0, penAway - 1))} className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 font-bold text-sm">−</button>
+                    <span className="w-6 text-center font-bold">{penAway}</span>
+                    <button onClick={() => setPenAway(penAway + 1)} className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 font-bold text-sm">+</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Status */}
         <div>

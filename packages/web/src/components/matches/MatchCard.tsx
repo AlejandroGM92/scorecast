@@ -77,8 +77,10 @@ export function MatchCard({ match }: MatchCardProps) {
     onError: (err: any) => toast.error(err.response?.data?.error || 'Error al guardar'),
   });
 
-  const homeWon = isFinished && match.scoreHome !== null && match.scoreAway !== null && match.scoreHome > match.scoreAway;
-  const awayWon = isFinished && match.scoreHome !== null && match.scoreAway !== null && match.scoreAway > match.scoreHome;
+  const homeWon    = isFinished && match.scoreHome !== null && match.scoreAway !== null && match.scoreHome > match.scoreAway;
+  const awayWon    = isFinished && match.scoreHome !== null && match.scoreAway !== null && match.scoreAway > match.scoreHome;
+  const homeWonPen = isFinished && !homeWon && !awayWon && match.scoreHomePen !== null && match.scoreAwayPen !== null && match.scoreHomePen > match.scoreAwayPen;
+  const awayWonPen = isFinished && !homeWon && !awayWon && match.scoreHomePen !== null && match.scoreAwayPen !== null && match.scoreAwayPen > match.scoreHomePen;
 
   // What to show in the prediction zone
   const canEdit  = isScheduled && !pastDeadline;
@@ -119,26 +121,33 @@ export function MatchCard({ match }: MatchCardProps) {
 
       {/* Teams + Score */}
       <div className="flex items-center gap-3">
-        <div className={clsx('flex items-center gap-2 flex-1 min-w-0', awayWon && 'opacity-50')}>
+        <div className={clsx('flex items-center gap-2 flex-1 min-w-0', (awayWon || awayWonPen) && 'opacity-50')}>
           <img src={match.teamHome.flag} alt={match.teamHome.name} className="w-8 h-8 object-cover rounded shrink-0" />
-          <span className={clsx('font-semibold text-sm truncate', homeWon && 'text-success')}>
+          <span className={clsx('font-semibold text-sm truncate', (homeWon || homeWonPen) && 'text-success')}>
             {match.teamHome.name}
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0 min-w-[72px] justify-center">
-          <span className={clsx('score-display', homeWon ? 'text-success' : 'text-text-primary')}>
-            {match.scoreHome ?? '-'}
-          </span>
-          <span className="text-text-muted font-light">:</span>
-          <span className={clsx('score-display', awayWon ? 'text-success' : 'text-text-primary')}>
-            {match.scoreAway ?? '-'}
-          </span>
+        <div className="flex flex-col items-center shrink-0 min-w-[72px]">
+          <div className="flex items-center gap-1.5 justify-center">
+            <span className={clsx('score-display', (homeWon || homeWonPen) ? 'text-success' : 'text-text-primary')}>
+              {match.scoreHome ?? '-'}
+            </span>
+            <span className="text-text-muted font-light">:</span>
+            <span className={clsx('score-display', (awayWon || awayWonPen) ? 'text-success' : 'text-text-primary')}>
+              {match.scoreAway ?? '-'}
+            </span>
+          </div>
+          {(homeWonPen || awayWonPen) && (
+            <span className="text-[10px] text-text-muted mt-0.5">
+              P: {match.scoreHomePen}-{match.scoreAwayPen}
+            </span>
+          )}
         </div>
 
-        <div className={clsx('flex items-center gap-2 flex-1 flex-row-reverse min-w-0', homeWon && 'opacity-50')}>
+        <div className={clsx('flex items-center gap-2 flex-1 flex-row-reverse min-w-0', (homeWon || homeWonPen) && 'opacity-50')}>
           <img src={match.teamAway.flag} alt={match.teamAway.name} className="w-8 h-8 object-cover rounded shrink-0" />
-          <span className={clsx('font-semibold text-sm truncate text-right', awayWon && 'text-success')}>
+          <span className={clsx('font-semibold text-sm truncate text-right', (awayWon || awayWonPen) && 'text-success')}>
             {match.teamAway.name}
           </span>
         </div>
