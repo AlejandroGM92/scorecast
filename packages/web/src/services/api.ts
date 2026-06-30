@@ -116,6 +116,7 @@ export const adminApi = {
   exportUsers: () => api.get('/admin/users/export', { responseType: 'blob' }),
   seedMissingMatches: () => api.post('/admin/seed-missing-matches'),
   seedRoundOf32: () => api.post('/admin/seed-round-of-32'),
+  fixRoundOf32Times: () => api.post('/admin/fix-round-of-32-times'),
   predictions: (matchId?: string) => api.get('/admin/predictions', { params: matchId ? { matchId } : undefined }),
   exportPredictions: () => api.get('/admin/predictions/export', { responseType: 'blob' }),
   calculateAllPoints: () => api.post('/admin/calculate-all-points'),

@@ -1005,23 +1005,39 @@ export default function AdminPage() {
         <div className="glass-card px-4 py-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold">Dieciseisavos de Final — Mundial 2026</p>
-            <p className="text-xs text-text-muted mt-0.5">Carga los 16 partidos de dieciseisavos (28 jun – 3 jul)</p>
+            <p className="text-xs text-text-muted mt-0.5">Carga los 16 partidos de dieciseisavos (28 jun – 4 jul)</p>
           </div>
-          <button
-            onClick={async () => {
-              try {
-                const res = await adminApi.seedRoundOf32();
-                const created = res.data.results.filter((r: any) => r.status === 'creado').length;
-                const existing = res.data.results.filter((r: any) => r.status === 'ya existe').length;
-                toast.success(`${created} partidos creados, ${existing} ya existían`);
-              } catch {
-                toast.error('Error al cargar los partidos');
-              }
-            }}
-            className="btn-primary text-xs px-3 py-2 shrink-0"
-          >
-            Cargar
-          </button>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={async () => {
+                try {
+                  const res = await adminApi.seedRoundOf32();
+                  const created = res.data.results.filter((r: any) => r.status === 'creado').length;
+                  const existing = res.data.results.filter((r: any) => r.status === 'ya existe').length;
+                  toast.success(`${created} partidos creados, ${existing} ya existían`);
+                } catch {
+                  toast.error('Error al cargar los partidos');
+                }
+              }}
+              className="btn-primary text-xs px-3 py-2"
+            >
+              Cargar
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  const res = await adminApi.fixRoundOf32Times();
+                  const fixed = res.data.results.filter((r: any) => r.status.startsWith('corregido')).length;
+                  toast.success(`${fixed} horarios corregidos`);
+                } catch {
+                  toast.error('Error al corregir horarios');
+                }
+              }}
+              className="btn-secondary text-xs px-3 py-2"
+            >
+              Corregir horarios
+            </button>
+          </div>
         </div>
 
         {/* Mundial 2026 sync — ESPN (sin límite de API) */}

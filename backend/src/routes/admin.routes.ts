@@ -1064,6 +1064,48 @@ router.post('/seed-round-of-32', adminAuth, async (_req, res, next) => {
   }
 });
 
+// POST /api/admin/fix-round-of-32-times — correct kick-off times for all R32 matches
+router.post('/fix-round-of-32-times', adminAuth, async (_req, res, next) => {
+  try {
+    const corrections = [
+      { home: 'NED', away: 'MAR', date: '2026-06-30T01:00:00Z', venue: 'Estadio BBVA', city: 'Guadalupe' },
+      { home: 'FRA', away: 'SWE', date: '2026-06-30T21:00:00Z', venue: 'MetLife Stadium', city: 'East Rutherford' },
+      { home: 'MEX', away: 'ECU', date: '2026-07-01T01:00:00Z', venue: 'Estadio Azteca', city: 'Ciudad de México' },
+      { home: 'ENG', away: 'COD', date: '2026-07-01T16:00:00Z', venue: 'Mercedes-Benz Stadium', city: 'Atlanta' },
+      { home: 'BEL', away: 'SEN', date: '2026-07-01T20:00:00Z', venue: 'Lumen Field', city: 'Seattle' },
+      { home: 'USA', away: 'BIH', date: '2026-07-02T00:00:00Z', venue: 'Levi\'s Stadium', city: 'Santa Clara' },
+      { home: 'ESP', away: 'AUT', date: '2026-07-02T19:00:00Z', venue: 'SoFi Stadium', city: 'Inglewood' },
+      { home: 'POR', away: 'CRO', date: '2026-07-02T23:00:00Z', venue: 'BMO Field', city: 'Toronto' },
+      { home: 'SUI', away: 'ALG', date: '2026-07-03T03:00:00Z', venue: 'BC Place', city: 'Vancouver' },
+      { home: 'AUS', away: 'EGY', date: '2026-07-03T18:00:00Z', venue: 'AT&T Stadium', city: 'Arlington' },
+      { home: 'ARG', away: 'CPV', date: '2026-07-03T22:00:00Z', venue: 'Hard Rock Stadium', city: 'Miami Gardens' },
+      { home: 'COL', away: 'GHA', date: '2026-07-04T01:30:00Z', venue: 'GEHA Field at Arrowhead Stadium', city: 'Kansas City' },
+    ];
+
+    const results = [];
+    for (const c of corrections) {
+      const home = await prisma.team.findUnique({ where: { code: c.home } });
+      const away = await prisma.team.findUnique({ where: { code: c.away } });
+      if (!home || !away) { results.push({ match: `${c.home} vs ${c.away}`, status: 'equipo no encontrado' }); continue; }
+
+      const match = await prisma.match.findFirst({
+        where: { teamHomeId: home.id, teamAwayId: away.id, phase: 'ROUND_OF_32' },
+      });
+      if (!match) { results.push({ match: `${home.name} vs ${away.name}`, status: 'partido no encontrado' }); continue; }
+
+      await prisma.match.update({
+        where: { id: match.id },
+        data: { dateTime: new Date(c.date), venue: c.venue, city: c.city },
+      });
+      results.push({ match: `${home.name} vs ${away.name}`, status: `corregido → ${c.date}` });
+    }
+
+    res.json({ success: true, results });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/admin/seed-missing-matches — add group-stage matches missing from initial sync
 router.post('/seed-missing-matches', adminAuth, async (_req, res, next) => {
   try {
