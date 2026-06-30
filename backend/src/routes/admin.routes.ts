@@ -458,6 +458,19 @@ router.put('/match/:id/score', adminAuth, async (req, res, next) => {
     const data = schema.parse(req.body);
     const isScheduled = data.status === 'SCHEDULED';
 
+    // Read current score to detect if regular score actually changed
+    const current = await prisma.match.findUnique({
+      where: { id: req.params.id },
+      select: { scoreHome: true, scoreAway: true, pointsCalculated: true },
+    });
+
+    const scoreChanged = current && (
+      data.scoreHome !== current.scoreHome || data.scoreAway !== current.scoreAway
+    );
+
+    // Only reset pointsCalculated if the REGULAR score changed — penalty scores are display-only
+    const resetPoints = isScheduled || (data.status === 'FINISHED' && (scoreChanged || !current?.pointsCalculated));
+
     const match = await prisma.match.update({
       where: { id: req.params.id },
       data: {
@@ -466,7 +479,7 @@ router.put('/match/:id/score', adminAuth, async (req, res, next) => {
         scoreAway: isScheduled ? null : data.scoreAway,
         scoreHomePen: isScheduled ? null : data.scoreHomePen,
         scoreAwayPen: isScheduled ? null : data.scoreAwayPen,
-        pointsCalculated: isScheduled ? false : data.status === 'FINISHED' ? false : undefined,
+        pointsCalculated: resetPoints ? false : undefined,
       },
     });
 
