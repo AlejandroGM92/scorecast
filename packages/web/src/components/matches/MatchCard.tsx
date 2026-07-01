@@ -6,6 +6,7 @@ import { clsx } from 'clsx';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { predictionsApi } from '@/services/api';
+import { useAuthStore } from '@/store/auth.store';
 import type { Match } from '../../../../shared/types';
 
 const DEADLINE_MINUTES = 20;
@@ -44,6 +45,7 @@ interface MatchCardProps { match: Match }
 export function MatchCard({ match }: MatchCardProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isAdmin = useAuthStore((s) => s.user?.role === 'ADMIN');
 
   const isLive     = match.status === 'LIVE' || match.status === 'HALFTIME';
   const isFinished = match.status === 'FINISHED';
@@ -51,7 +53,11 @@ export function MatchCard({ match }: MatchCardProps) {
   const isScheduled = match.status === 'SCHEDULED';
 
   const matchDate = useMemo(() => new Date(match.dateTime), [match.dateTime]);
-  const { label: countdown, pastDeadline } = useMatchTimer(matchDate);
+  const { label: countdown, pastDeadline: deadlineReached } = useMatchTimer(matchDate);
+
+  // Admins bypass time deadline — backend enforces the real rule (blocks only if pointsCalculated)
+  const pastDeadline = isAdmin ? false : deadlineReached;
+  const adminCanPredict = isAdmin && !match.pointsCalculated;
 
   const hasPrediction = !!match.userPrediction;
   const [editing, setEditing] = useState(false);
@@ -83,10 +89,10 @@ export function MatchCard({ match }: MatchCardProps) {
   const awayWonPen = isFinished && !homeWon && !awayWon && match.scoreHomePen !== null && match.scoreAwayPen !== null && match.scoreAwayPen > match.scoreHomePen;
 
   // What to show in the prediction zone
-  const canEdit  = isScheduled && !pastDeadline;
-  const showControls = isScheduled && !pastDeadline && (!hasPrediction || editing);
-  const showSaved    = hasPrediction && (!editing || pastDeadline);
-  const showLocked   = isScheduled && pastDeadline;
+  const canEdit  = (isScheduled && !pastDeadline) || (adminCanPredict && !isFinished);
+  const showControls = (canEdit && (!hasPrediction || editing)) || (adminCanPredict && isFinished && editing);
+  const showSaved    = hasPrediction && !editing;
+  const showLocked   = !adminCanPredict && isScheduled && pastDeadline;
 
   return (
     <div

@@ -18,18 +18,26 @@ router.post('/', auth, predictionLimiter, async (req: AuthRequest, res, next) =>
     const { matchId, predictedHome, predictedAway } = predictionSchema.parse(req.body);
     const userId = req.user!.id;
 
+    const isAdmin = req.user!.role === 'ADMIN';
     const match = await prisma.match.findUnique({ where: { id: matchId } });
 
     if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
 
-    if (['LOCKED', 'LIVE', 'HALFTIME', 'FINISHED'].includes(match.status)) {
-      return res.status(400).json({ error: 'Las predicciones están cerradas para este partido' });
-    }
+    // Admins can predict at any time unless points are already calculated
+    if (isAdmin) {
+      if (match.pointsCalculated) {
+        return res.status(400).json({ error: 'Los puntos ya fueron calculados para este partido' });
+      }
+    } else {
+      if (['LOCKED', 'LIVE', 'HALFTIME', 'FINISHED'].includes(match.status)) {
+        return res.status(400).json({ error: 'Las predicciones están cerradas para este partido' });
+      }
 
-    const deadlineMinutes = parseInt(process.env.PREDICTION_DEADLINE_MINUTES || '20');
-    const minutesUntilMatch = (match.dateTime.getTime() - Date.now()) / 60_000;
-    if (minutesUntilMatch <= deadlineMinutes) {
-      return res.status(400).json({ error: 'Las predicciones están cerradas para este partido' });
+      const deadlineMinutes = parseInt(process.env.PREDICTION_DEADLINE_MINUTES || '20');
+      const minutesUntilMatch = (match.dateTime.getTime() - Date.now()) / 60_000;
+      if (minutesUntilMatch <= deadlineMinutes) {
+        return res.status(400).json({ error: 'Las predicciones están cerradas para este partido' });
+      }
     }
 
     // Check if this is an edit (prediction already exists with different values)
