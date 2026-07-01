@@ -1272,7 +1272,7 @@ export default function AdminPage() {
                   className="input-field w-full bg-[#0f1729] text-white text-sm"
                 >
                   <option value="">Seleccionar usuario</option>
-                  {(users ?? []).filter((u: any) => u.role !== 'ADMIN').sort((a: any, b: any) => a.username.localeCompare(b.username)).map((u: any) => (
+                  {(users ?? []).sort((a: any, b: any) => a.username.localeCompare(b.username)).map((u: any) => (
                     <option key={u.id} value={u.id}>{u.username}</option>
                   ))}
                 </select>
