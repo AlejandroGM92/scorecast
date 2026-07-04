@@ -1194,7 +1194,7 @@ export default function AdminPage() {
                 >
                   <option value="">Seleccionar partido</option>
                   {(matches ?? [])
-                    .filter((m: any) => !m.pointsCalculated && ['SCHEDULED', 'LOCKED'].includes(m.status))
+                    .filter((m: any) => !m.pointsCalculated)
                     .map((m: any) => (
                       <option key={m.id} value={m.id}>
                         {m.teamHome.name} vs {m.teamAway.name} — {format(new Date(m.dateTime), 'dd MMM HH:mm', { locale: es })}
