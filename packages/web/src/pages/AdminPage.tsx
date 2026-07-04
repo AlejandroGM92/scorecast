@@ -651,20 +651,6 @@ export default function AdminPage() {
     onError: (e: any) => toast.error(e.response?.data?.error || 'Error al guardar predicción'),
   });
 
-  const simulateMatches = useMutation({
-    mutationFn: () => adminApi.simulateMatches(),
-    onSuccess: ({ data }: any) => {
-      toast.success(`Simulación completada: ${data.results?.length} partidos`);
-      qc.invalidateQueries({ queryKey: ['leaderboard'] });
-    },
-    onError: (e: any) => toast.error(e.response?.data?.error || 'Error en simulación'),
-  });
-
-  const cleanupSimulation = useMutation({
-    mutationFn: () => adminApi.cleanupSimulation(),
-    onSuccess: ({ data }: any) => toast.success(`Limpieza completada: ${data.deleted} partidos eliminados`),
-    onError: (e: any) => toast.error(e.response?.data?.error || 'Error en limpieza'),
-  });
 
   const syncGroups = useMutation({
     mutationFn: () => adminApi.syncGroups(),
@@ -1058,26 +1044,6 @@ export default function AdminPage() {
             <RefreshCw size={12} className={recalculateStandings.isPending ? 'animate-spin' : ''} />
             {recalculateStandings.isPending ? 'Actualizando...' : '📊 Actualizar tabla de grupos'}
           </button>
-        </div>
-        <div className="glass-card p-4 space-y-2">
-          <p className="text-xs text-text-muted font-semibold uppercase tracking-wide">🧪 Simulación de partidos</p>
-          <p className="text-xs text-text-muted">Crea 5 partidos finalizados con predicciones automáticas para verificar puntos y tabla de posiciones.</p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => { if (!window.confirm('¿Crear 5 partidos de prueba con predicciones automáticas y calcular puntos?')) return; simulateMatches.mutate(); }}
-              disabled={simulateMatches.isPending}
-              className="btn-primary text-xs flex-1 py-2"
-            >
-              {simulateMatches.isPending ? 'Simulando...' : '▶ Ejecutar simulación'}
-            </button>
-            <button
-              onClick={() => { if (!window.confirm('¿Eliminar los partidos de prueba y revertir los puntos?')) return; cleanupSimulation.mutate(); }}
-              disabled={cleanupSimulation.isPending}
-              className="text-xs px-3 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 font-semibold transition-colors"
-            >
-              {cleanupSimulation.isPending ? '...' : '🗑 Limpiar'}
-            </button>
-          </div>
         </div>
 
         <div className="glass-card px-4 py-3 flex items-center gap-2 flex-wrap gap-y-2">
