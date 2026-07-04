@@ -1029,6 +1029,32 @@ export default function AdminPage() {
           </button>
         </div>
 
+        {/* Progresión automática de fase */}
+        <div className="glass-card px-4 py-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold">Avanzar Fase Automáticamente</p>
+            <p className="text-xs text-text-muted mt-0.5">Detecta la fase completa y crea la siguiente (QF → SF → Final) con ESPN + validación BD</p>
+          </div>
+          <button
+            onClick={async () => {
+              try {
+                const res = await adminApi.progressPhase();
+                const { phaseCompleted, nextPhase, matchesCreated, matchesUpdated, skipped } = res.data;
+                if (!phaseCompleted) {
+                  toast('No hay fase lista para avanzar aún', { icon: 'ℹ️' });
+                } else {
+                  toast.success(`${phaseCompleted} → ${nextPhase}: ${matchesCreated} creados, ${matchesUpdated} actualizados, ${skipped} saltados`);
+                }
+              } catch {
+                toast.error('Error al avanzar fase');
+              }
+            }}
+            className="btn-primary text-xs px-3 py-2 shrink-0"
+          >
+            Avanzar Fase
+          </button>
+        </div>
+
         {/* Sembrar dieciseisavos */}
         <div className="glass-card px-4 py-3 flex items-center justify-between gap-3">
           <div>

@@ -10,6 +10,7 @@ import apiFootballService from '../services/apiFootball.service';
 import { syncWorldCupScores, syncWorldCupLive } from '../services/wcSync.service';
 import { sendMatchReminderEmail, verifySmtp } from '../services/email.service';
 import { recalculateGroupStandings } from '../services/standings.service';
+import { autoProgressPhase } from '../services/phaseProgression.service';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -1522,6 +1523,16 @@ router.post('/sync-seed-round-of-16', adminAuth, async (_req, res, next) => {
     }
 
     res.json({ success: true, espnEventsFound: espnEvents.length, winnersFound: winnerCodeByEspnId.size, results });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/admin/progress-phase — detecta fase completa y crea la siguiente con ESPN + validación BD
+router.post('/progress-phase', adminAuth, async (_req, res, next) => {
+  try {
+    const result = await autoProgressPhase();
+    res.json({ success: true, ...result });
   } catch (error) {
     next(error);
   }

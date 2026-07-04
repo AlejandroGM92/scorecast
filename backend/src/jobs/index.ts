@@ -2,6 +2,7 @@ import { startLiveScoreUpdates } from './syncLiveScores.job';
 import { startPointsCalculationJob } from './calculatePoints.job';
 import { startPredictionLockJob } from './lockMatches.job';
 import { startEmailNotificationsJob } from './emailNotifications.job';
+import { startPhaseProgressionJob } from './phaseProgression.job';
 import { logger } from '../utils/logger';
 
 export function startAllJobs() {
@@ -14,6 +15,7 @@ export function startAllJobs() {
   startPointsCalculationJob();
   startPredictionLockJob();
   startEmailNotificationsJob();
+  startPhaseProgressionJob();
 
   logger.info('🚀 All cron jobs initialized');
 }
