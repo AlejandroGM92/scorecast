@@ -1011,18 +1011,21 @@ export default function AdminPage() {
           <button
             onClick={async () => {
               try {
-                const res = await adminApi.seedRoundOf16();
+                const res = await adminApi.syncSeedRoundOf16();
                 const created = res.data.results.filter((r: any) => r.status === 'creado').length;
-                const existing = res.data.results.filter((r: any) => r.status === 'ya existe').length;
+                const updated = res.data.results.filter((r: any) => r.status === 'actualizado').length;
                 const pending = res.data.results.filter((r: any) => r.status.startsWith('pendiente')).length;
-                toast.success(`Octavos: ${created} creados, ${existing} ya existían, ${pending} pendientes`);
+                toast.success(`Octavos: ${created} creados, ${updated} actualizados, ${pending} pendientes`);
+                if (res.data.results.some((r: any) => r.status.startsWith('equipo'))) {
+                  toast.error('Algunos equipos no se encontraron — revisa logs');
+                }
               } catch {
                 toast.error('Error al sembrar octavos');
               }
             }}
             className="btn-primary text-xs px-3 py-2 shrink-0"
           >
-            Sembrar Octavos
+            Sembrar Octavos (ESPN)
           </button>
         </div>
 

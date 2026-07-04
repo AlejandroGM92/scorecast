@@ -118,6 +118,7 @@ export const adminApi = {
   seedRoundOf32: () => api.post('/admin/seed-round-of-32'),
   fixRoundOf32Times: () => api.post('/admin/fix-round-of-32-times'),
   seedRoundOf16: () => api.post('/admin/seed-round-of-16'),
+  syncSeedRoundOf16: () => api.post('/admin/sync-seed-round-of-16'),
   predictions: (matchId?: string) => api.get('/admin/predictions', { params: matchId ? { matchId } : undefined }),
   exportPredictions: () => api.get('/admin/predictions/export', { responseType: 'blob' }),
   calculateAllPoints: () => api.post('/admin/calculate-all-points'),

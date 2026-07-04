@@ -6,11 +6,11 @@ import type { Match, MatchPhase, Team } from '../../../shared/types';
 import { PHASE_LABELS } from '../../../shared/constants/odds';
 
 const PHASES: { value: string; label: string }[] = [
-  { value: 'ROUND_OF_32', label: 'Dieciseisavos' },
   { value: 'ROUND_OF_16', label: 'Octavos' },
   { value: 'QUARTER_FINALS', label: 'Cuartos' },
   { value: 'SEMI_FINALS', label: 'Semis' },
   { value: 'FINAL', label: 'Final' },
+  { value: 'ROUND_OF_32', label: 'Dieciseisavos' },
   { value: '', label: 'Todos' },
   { value: 'GROUP_STAGE', label: 'Grupos' },
 ];
@@ -117,7 +117,7 @@ function GroupStandingsView() {
 }
 
 export default function MatchesPage() {
-  const [phase, setPhase] = useState('ROUND_OF_32');
+  const [phase, setPhase] = useState('ROUND_OF_16');
 
   const { data: matches, isLoading } = useQuery<Match[]>({
     queryKey: ['matches', phase],
