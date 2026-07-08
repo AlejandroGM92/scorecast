@@ -52,6 +52,15 @@ async function detectCurrentPhase(): Promise<string> {
   return last?.phase ?? 'GROUP_STAGE';
 }
 
+// GET /api/matches/current-phase
+router.get('/current-phase', async (_req, res, next) => {
+  try {
+    res.json({ phase: await detectCurrentPhase() });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /api/matches - list with optional filters
 router.get('/', optionalAuth, async (req: AuthRequest, res, next) => {
   try {

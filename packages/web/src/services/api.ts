@@ -56,6 +56,7 @@ export const teamsApi = {
 
 // Matches
 export const matchesApi = {
+  currentPhase: () => api.get('/matches/current-phase'),
   list: (params?: Record<string, string>) => api.get('/matches', { params }),
   live: () => api.get('/matches/live'),
   detail: (id: string) => api.get(`/matches/${id}`),

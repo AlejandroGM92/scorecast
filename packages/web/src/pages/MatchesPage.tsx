@@ -6,10 +6,10 @@ import type { Match, MatchPhase, Team } from '../../../shared/types';
 import { PHASE_LABELS } from '../../../shared/constants/odds';
 
 const PHASES: { value: string; label: string }[] = [
-  { value: 'ROUND_OF_16', label: 'Octavos' },
   { value: 'QUARTER_FINALS', label: 'Cuartos' },
   { value: 'SEMI_FINALS', label: 'Semis' },
   { value: 'FINAL', label: 'Final' },
+  { value: 'ROUND_OF_16', label: 'Octavos' },
   { value: 'ROUND_OF_32', label: 'Dieciseisavos' },
   { value: '', label: 'Todos' },
   { value: 'GROUP_STAGE', label: 'Grupos' },
@@ -117,15 +117,25 @@ function GroupStandingsView() {
 }
 
 export default function MatchesPage() {
-  const [phase, setPhase] = useState('ROUND_OF_16');
+  const [phase, setPhase] = useState<string | null>(null);
+
+  const { data: currentPhaseData } = useQuery<{ phase: string }>({
+    queryKey: ['current-phase'],
+    queryFn: () => matchesApi.currentPhase().then((r) => r.data),
+    staleTime: 5 * 60_000,
+  });
+
+  // null = user hasn't selected → auto-detect; '' = user selected "Todos"
+  const activePhase = phase !== null ? phase : (currentPhaseData?.phase || 'QUARTER_FINALS');
 
   const { data: matches, isLoading } = useQuery<Match[]>({
-    queryKey: ['matches', phase],
+    queryKey: ['matches', activePhase],
     queryFn: () => {
-      if (phase === '') return matchesApi.list({ all: 'true' }).then((r) => r.data);
-      return matchesApi.list(phase ? { phase } : undefined).then((r) => r.data);
+      if (activePhase === '') return matchesApi.list({ all: 'true' }).then((r) => r.data);
+      return matchesApi.list({ phase: activePhase }).then((r) => r.data);
     },
     refetchInterval: 30_000,
+    enabled: phase !== null || !!currentPhaseData,
   });
 
   const { data: liveMatches } = useQuery<Match[]>({
@@ -155,7 +165,7 @@ export default function MatchesPage() {
             key={p.value}
             onClick={() => setPhase(p.value)}
             className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              phase === p.value
+              activePhase === p.value
                 ? 'bg-primary-600 text-white'
                 : 'bg-white/5 text-text-muted hover:bg-white/10'
             }`}
@@ -166,7 +176,7 @@ export default function MatchesPage() {
       </div>
 
       {/* Live matches banner */}
-      {hasLive && !phase && (
+      {hasLive && !activePhase && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
@@ -180,7 +190,7 @@ export default function MatchesPage() {
       )}
 
       {/* Group standings or match list */}
-      {phase === 'GROUP_STAGE' ? (
+      {activePhase === 'GROUP_STAGE' ? (
         <GroupStandingsView />
       ) : isLoading ? (
         <div className="space-y-3">
@@ -191,17 +201,17 @@ export default function MatchesPage() {
       ) : matches?.length === 0 ? (
         <div className="text-center text-text-muted py-12 space-y-2">
           <div className="text-4xl">
-            {phase && phase !== 'GROUP_STAGE' ? '🔒' : '⚽'}
+            {activePhase && activePhase !== 'GROUP_STAGE' ? '🔒' : '⚽'}
           </div>
           <p className="font-semibold text-sm">
-            {phase === 'ROUND_OF_32' && 'Los 32 clasificados se definen al terminar la Fase de Grupos'}
-            {phase === 'ROUND_OF_16' && 'Los equipos se definen en los Dieciseisavos'}
-            {phase === 'QUARTER_FINALS' && 'Los equipos se definen en los Octavos'}
-            {phase === 'SEMI_FINALS' && 'Los equipos se definen en los Cuartos de Final'}
-            {phase === 'FINAL' && 'Los finalistas se definen en las Semifinales'}
-            {(!phase || phase === 'GROUP_STAGE') && 'No hay partidos en esta fase todavía'}
+            {activePhase === 'ROUND_OF_32' && 'Los 32 clasificados se definen al terminar la Fase de Grupos'}
+            {activePhase === 'ROUND_OF_16' && 'Los equipos se definen en los Dieciseisavos'}
+            {activePhase === 'QUARTER_FINALS' && 'Los equipos se definen en los Octavos'}
+            {activePhase === 'SEMI_FINALS' && 'Los equipos se definen en los Cuartos de Final'}
+            {activePhase === 'FINAL' && 'Los finalistas se definen en las Semifinales'}
+            {(!activePhase || activePhase === 'GROUP_STAGE') && 'No hay partidos en esta fase todavía'}
           </p>
-          {phase && phase !== 'GROUP_STAGE' && (
+          {activePhase && activePhase !== 'GROUP_STAGE' && (
             <p className="text-xs text-text-muted/60">Los partidos aparecerán aquí cuando los equipos clasifiquen</p>
           )}
         </div>
