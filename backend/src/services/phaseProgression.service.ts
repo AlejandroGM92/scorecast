@@ -12,8 +12,8 @@ const NEXT_PHASE: Record<KnockoutPhase, string> = {
 
 // ESPN date ranges for each next phase
 const ESPN_DATES: Record<string, string> = {
-  QUARTER_FINALS: '20260711-20260712',
-  SEMI_FINALS:    '20260715-20260716',
+  QUARTER_FINALS: '20260709-20260712',
+  SEMI_FINALS:    '20260714-20260717',
   FINAL:          '20260718-20260722',
 };
 
