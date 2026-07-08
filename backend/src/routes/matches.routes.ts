@@ -27,6 +27,8 @@ const matchSelect = {
   teamAway: { select: { id: true, name: true, code: true, flag: true, group: true } },
 };
 
+const PHASE_ORDER = ['FINAL', 'THIRD_PLACE', 'SEMI_FINALS', 'QUARTER_FINALS', 'ROUND_OF_16', 'ROUND_OF_32', 'GROUP_STAGE'];
+
 async function detectCurrentPhase(): Promise<string> {
   // 1. Any live match?
   const live = await prisma.match.findFirst({
@@ -35,15 +37,16 @@ async function detectCurrentPhase(): Promise<string> {
   });
   if (live) return live.phase;
 
-  // 2. Earliest not-yet-finished match
-  const next = await prisma.match.findFirst({
-    where: { competition: 'WORLD_CUP', status: { notIn: ['FINISHED', 'CANCELLED'] } },
-    orderBy: { dateTime: 'asc' },
-    select: { phase: true },
-  });
-  if (next) return next.phase;
+  // 2. Most advanced phase that has upcoming/scheduled matches
+  for (const phase of PHASE_ORDER) {
+    const upcoming = await prisma.match.findFirst({
+      where: { competition: 'WORLD_CUP', phase: phase as any, status: { notIn: ['FINISHED', 'CANCELLED'] } },
+      select: { phase: true },
+    });
+    if (upcoming) return upcoming.phase;
+  }
 
-  // 3. All done — return last phase
+  // 3. All done — return last phase by date
   const last = await prisma.match.findFirst({
     where: { competition: 'WORLD_CUP' },
     orderBy: { dateTime: 'desc' },
