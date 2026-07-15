@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { clsx } from 'clsx';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { predictionsApi } from '@/services/api';
 import { useAuthStore } from '@/store/auth.store';
@@ -61,6 +61,20 @@ export function MatchCard({ match }: MatchCardProps) {
 
   const hasPrediction = !!match.userPrediction;
   const [editing, setEditing] = useState(false);
+  const [showPredictions, setShowPredictions] = useState(false);
+
+  // Auto-expand when match goes live
+  useEffect(() => {
+    if (isLive) setShowPredictions(true);
+  }, [isLive]);
+
+  const { data: allPredictions } = useQuery<any[]>({
+    queryKey: ['match-predictions', match.id],
+    queryFn: () => predictionsApi.forMatch(match.id).then((r) => r.data),
+    enabled: isLive || isFinished,
+    staleTime: isFinished ? 5 * 60_000 : 30_000,
+    refetchInterval: isLive ? 60_000 : false,
+  });
 
   const [home, setHome] = useState<number>(match.userPrediction?.predictedHome ?? 0);
   const [away, setAway] = useState<number>(match.userPrediction?.predictedAway ?? 0);
@@ -256,6 +270,38 @@ export function MatchCard({ match }: MatchCardProps) {
         {(isLocked || isFinished) && !hasPrediction && (
           <div className="mt-3 pt-3 border-t border-white/5">
             <p className="text-xs text-center text-text-muted/40 select-none">Sin predicción</p>
+          </div>
+        )}
+
+        {/* ── All predictions panel (visible when LIVE or FINISHED) ── */}
+        {(isLive || isFinished) && allPredictions && allPredictions.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-white/5">
+            <button
+              onClick={() => setShowPredictions((v) => !v)}
+              className="w-full flex items-center justify-between text-xs text-text-muted hover:text-white transition-colors"
+            >
+              <span className="font-semibold">
+                {isLive ? '👁 Predicciones en vivo' : '📊 Predicciones'} ({allPredictions.length})
+              </span>
+              <span>{showPredictions ? '▲' : '▼'}</span>
+            </button>
+            {showPredictions && (
+              <div className="mt-2 space-y-1 max-h-48 overflow-y-auto pr-1">
+                {allPredictions.map((p: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between text-xs py-0.5">
+                    <span className="text-text-muted truncate max-w-[120px]">{p.user.username}</span>
+                    <span className="font-bold tabular-nums">{p.predictedHome}–{p.predictedAway}</span>
+                    {isFinished ? (
+                      <span className={clsx('w-10 text-right font-semibold', p.pointsEarned > 0 ? 'text-success' : 'text-text-muted/50')}>
+                        {p.pointsEarned > 0 ? `+${p.pointsEarned}` : '0'}
+                      </span>
+                    ) : (
+                      <span className="w-10" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

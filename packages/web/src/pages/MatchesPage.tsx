@@ -6,9 +6,10 @@ import type { Match, MatchPhase, Team } from '../../../shared/types';
 import { PHASE_LABELS } from '../../../shared/constants/odds';
 
 const PHASES: { value: string; label: string }[] = [
-  { value: 'QUARTER_FINALS', label: 'Cuartos' },
   { value: 'SEMI_FINALS', label: 'Semis' },
   { value: 'FINAL', label: 'Final' },
+  { value: 'THIRD_PLACE', label: '3° Puesto' },
+  { value: 'QUARTER_FINALS', label: 'Cuartos' },
   { value: 'ROUND_OF_16', label: 'Octavos' },
   { value: 'ROUND_OF_32', label: 'Dieciseisavos' },
   { value: '', label: 'Todos' },
@@ -208,6 +209,7 @@ export default function MatchesPage() {
             {activePhase === 'ROUND_OF_16' && 'Los equipos se definen en los Dieciseisavos'}
             {activePhase === 'QUARTER_FINALS' && 'Los equipos se definen en los Octavos'}
             {activePhase === 'SEMI_FINALS' && 'Los equipos se definen en los Cuartos de Final'}
+            {activePhase === 'THIRD_PLACE' && 'Los equipos del 3° puesto se definen en las Semifinales'}
             {activePhase === 'FINAL' && 'Los finalistas se definen en las Semifinales'}
             {(!activePhase || activePhase === 'GROUP_STAGE') && 'No hay partidos en esta fase todavía'}
           </p>
