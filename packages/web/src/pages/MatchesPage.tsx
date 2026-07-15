@@ -6,14 +6,14 @@ import type { Match, MatchPhase, Team } from '../../../shared/types';
 import { PHASE_LABELS } from '../../../shared/constants/odds';
 
 const PHASES: { value: string; label: string }[] = [
-  { value: 'SEMI_FINALS', label: 'Semis' },
   { value: 'FINAL', label: 'Final' },
   { value: 'THIRD_PLACE', label: '3° Puesto' },
+  { value: 'SEMI_FINALS', label: 'Semis' },
   { value: 'QUARTER_FINALS', label: 'Cuartos' },
   { value: 'ROUND_OF_16', label: 'Octavos' },
   { value: 'ROUND_OF_32', label: 'Dieciseisavos' },
-  { value: '', label: 'Todos' },
   { value: 'GROUP_STAGE', label: 'Grupos' },
+  { value: '', label: 'Todos' },
 ];
 
 // 8 best third-place teams that qualified for Round of 32

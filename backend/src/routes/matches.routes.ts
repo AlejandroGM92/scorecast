@@ -37,22 +37,28 @@ async function detectCurrentPhase(): Promise<string> {
   });
   if (live) return live.phase;
 
-  // 2. Most advanced phase that has upcoming/scheduled matches
-  for (const phase of PHASE_ORDER) {
-    const upcoming = await prisma.match.findFirst({
-      where: { competition: 'WORLD_CUP', phase: phase as any, status: { notIn: ['FINISHED', 'CANCELLED'] } },
-      select: { phase: true },
-    });
-    if (upcoming) return upcoming.phase;
-  }
-
-  // 3. All done — return last phase by date
-  const last = await prisma.match.findFirst({
-    where: { competition: 'WORLD_CUP' },
-    orderBy: { dateTime: 'desc' },
+  // 2. Earliest future match (ignores stale SCHEDULED matches from past phases)
+  const upcoming = await prisma.match.findFirst({
+    where: {
+      competition: 'WORLD_CUP',
+      status: { notIn: ['FINISHED', 'CANCELLED'] },
+      dateTime: { gte: new Date() },
+    },
+    orderBy: { dateTime: 'asc' },
     select: { phase: true },
   });
-  return last?.phase ?? 'GROUP_STAGE';
+  if (upcoming) return upcoming.phase;
+
+  // 3. All done — return most advanced finished phase
+  for (const phase of PHASE_ORDER) {
+    const finished = await prisma.match.findFirst({
+      where: { competition: 'WORLD_CUP', phase: phase as any, status: 'FINISHED' },
+      select: { phase: true },
+    });
+    if (finished) return finished.phase;
+  }
+
+  return 'GROUP_STAGE';
 }
 
 // GET /api/matches/current-phase
