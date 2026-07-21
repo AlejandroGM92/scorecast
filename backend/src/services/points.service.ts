@@ -174,16 +174,16 @@ class PointsService {
   async calculateChampionPoints(winnerCode: string): Promise<void> {
     logger.info(`🏆 Calculating champion bonus for ${winnerCode}`);
 
+    const CHAMPION_BONUS = 5;
+
     const users = await prisma.user.findMany({
-      where: { championPrediction: winnerCode, championOdds: { not: null } },
+      where: { championPrediction: winnerCode },
     });
 
     for (const user of users) {
-      const bonusPoints = Math.round(user.championOdds! * 10);
-
       await prisma.user.update({
         where: { id: user.id },
-        data: { totalPoints: { increment: bonusPoints } },
+        data: { totalPoints: { increment: CHAMPION_BONUS } },
       });
 
       await prisma.notification.create({
@@ -191,12 +191,12 @@ class PointsService {
           userId: user.id,
           type: 'POINTS_EARNED',
           title: '¡Acertaste el campeón!',
-          message: `Ganaste ${bonusPoints} puntos por predecir correctamente al campeón`,
-          metadata: { champion: winnerCode, points: bonusPoints },
+          message: `Ganaste ${CHAMPION_BONUS} puntos por predecir correctamente al campeón`,
+          metadata: { champion: winnerCode, points: CHAMPION_BONUS },
         },
       });
 
-      logger.info(`  ✓ ${user.username}: +${bonusPoints} bonus pts`);
+      logger.info(`  ✓ ${user.username}: +${CHAMPION_BONUS} bonus pts`);
     }
   }
 }
