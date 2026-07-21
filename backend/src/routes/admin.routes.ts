@@ -724,6 +724,35 @@ router.post('/champion-lock', adminAuth, async (_req, res, next) => {
   }
 });
 
+// POST /api/admin/calculate-champion-points — award bonus points to users who predicted the champion
+router.post('/calculate-champion-points', adminAuth, async (req, res, next) => {
+  try {
+    const { winnerCode } = req.body as { winnerCode: string };
+    if (!winnerCode) return res.status(400).json({ error: 'winnerCode requerido' });
+
+    // Prevent double-awarding
+    const alreadyDone = await prisma.systemConfig.findUnique({ where: { key: 'champion_points_awarded' } });
+    if (alreadyDone) {
+      return res.status(400).json({ error: `Ya se asignaron puntos por campeón (${alreadyDone.value})` });
+    }
+
+    await pointsService.calculateChampionPoints(winnerCode);
+
+    await prisma.systemConfig.create({
+      data: { key: 'champion_points_awarded', value: winnerCode, description: 'Champion bonus points awarded' },
+    });
+
+    const winners = await prisma.user.findMany({
+      where: { championPrediction: winnerCode },
+      select: { username: true, championOdds: true, totalPoints: true },
+    });
+
+    res.json({ success: true, champion: winnerCode, usersAwarded: winners.length, users: winners });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/admin/sync-odds — apply correct champion odds to all 48 WC teams
 router.post('/sync-odds', adminAuth, async (_req, res, next) => {
   try {
