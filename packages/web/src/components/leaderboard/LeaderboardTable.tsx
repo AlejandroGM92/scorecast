@@ -72,9 +72,14 @@ export function LeaderboardTable() {
             </div>
 
             {/* Points */}
-            <span className="text-center font-bold text-success text-lg tabular-nums">
-              {entry.totalPoints}
-            </span>
+            <div className="flex flex-col items-center">
+              <span className="font-bold text-success text-lg tabular-nums leading-tight">
+                {entry.totalPoints}
+              </span>
+              {(entry as any).isChampionCorrect && (
+                <span className="text-[10px] font-semibold text-yellow-400 leading-tight">+5 🏆</span>
+              )}
+            </div>
 
             {/* Exact */}
             <span className="text-center text-sm text-text-muted hidden sm:block tabular-nums">

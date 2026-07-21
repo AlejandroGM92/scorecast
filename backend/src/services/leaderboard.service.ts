@@ -10,6 +10,7 @@ interface LeaderboardEntry {
   rank: number;
   predictionsCount: number;
   championPrediction: string | null;
+  isChampionCorrect: boolean;
   isCurrentUser?: boolean;
 }
 
@@ -71,6 +72,7 @@ class LeaderboardService {
         rank,
         predictionsCount: enriched[i].predictionsCount,
         championPrediction: enriched[i].championPrediction,
+        isChampionCorrect: enriched[i].championCorrect === 1,
         isCurrentUser: enriched[i].id === currentUserId,
       });
     }
